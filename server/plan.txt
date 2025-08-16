@@ -1,0 +1,280 @@
+
+---
+
+🚀 The Complete "Orion" Blueprint — Refined & Enhanced Edition
+
+🧩 A Robust, Scalable, and Modular HRMS Ecosystem
+
+This document outlines a professional-grade system with role-based access, modular features, and long-term scalability.
+
+
+---
+
+🔷 Part 1: Role-Based Access System – The Hierarchy of Power
+
+Access is hierarchical and inherited — higher roles get all permissions of lower ones.
+
+
+---
+
+🔹 Role: EMPLOYEE (Base User)
+
+Scope: Self-service & company engagement.
+
+Permissions:
+
+Dashboard: Welcome message, announcements, task reminders.
+
+My Profile:
+
+View: Job Title, Manager, Department, etc.
+
+Edit (with approval): Address, Phone, Emergency Contact, Profile Picture.
+
+Skills Matrix: Add/edit skills; peer/manager endorsements.
+
+
+Leave Management: Apply, view history/balance, withdraw, get notifications.
+
+Directory: Search colleagues, view public profiles.
+
+Org Chart: View full hierarchy, see your manager/team.
+
+Kudos: Give/receive Kudos, public Kudos feed.
+
+Chat: 1:1 and public channels.
+
+Notifications Center: Centralized updates for approvals, messages, etc.
+
+
+
+---
+
+🔹 Role: MANAGER
+
+Scope: Manages team and operations. Inherits EMPLOYEE permissions.
+
+Additional Permissions:
+
+Team Dashboard: Leave status, birthdays, events, Team Pulse metrics.
+
+Team Management: View reports’ profiles, write private performance notes.
+
+Leave Approvals: Approve/deny, view team calendar, delegate approvals.
+
+Performance: Set goals, review cycles, view AI-generated performance summaries.
+
+Onboarding/Offboarding: Complete assigned tasks.
+
+Private Chat Channels: Create team-specific groups.
+
+
+
+---
+
+🔹 Role: HR
+
+Scope: People ops for the entire org. Inherits MANAGER permissions.
+
+Additional Permissions:
+
+Employee Lifecycle: Create/update profiles, trigger onboarding/offboarding.
+
+Sensitive Data Access: View/Edit salary & bank details.
+
+Policy Management: Leave policies, holiday calendars.
+
+Document Management: Upload contracts, acknowledgments, etc.
+
+Surveys: Send anonymous feedback and engagement forms.
+
+Asset Management: Assign/track devices (laptops, licenses, etc).
+
+Full Attendance Reports: Download, filter, export.
+
+
+
+---
+
+🔹 Role: SUPER-ADMIN
+
+Scope: Full system ownership. Inherits HR permissions.
+
+Additional Permissions:
+
+User & Role Control: Create/delete users, change roles, role-change logs.
+
+System Settings: Company branding, enable/disable modules.
+
+Feature Flags: Toggle any feature.
+
+Workflow Builder: Create custom multi-step approval flows.
+
+Org Structure: Create departments, define hierarchies.
+
+Audit Logs: View full system activity trail.
+
+System Health Dashboard: API uptime, errors, login stats.
+
+Security Settings: Session timeout, 2FA, cookie policy.
+
+
+
+---
+
+📌 Part 2: Final Power Features (Polish Layer)
+
+
+---
+
+1. Announcements Module
+
+Why: Company-wide communication
+Features:
+
+Target by role, region, department.
+
+Rich formatting + media
+
+Require acknowledgement ("I have read")
+
+Read analytics (% seen, pending)
+
+
+
+---
+
+2. Company Asset Tracker
+
+Why: Keep track of laptops, phones, licenses
+Features:
+
+Assign assets to employees
+
+Track serial number, warranty, return checklist
+
+Link to onboarding/offboarding tasks
+
+
+
+---
+
+3. Configurable Workflows
+
+Why: Adapt to different org policies
+Features:
+
+Drag-drop builder for approval chains
+
+Example: Bank Update → Manager → HR
+
+Save workflows as templates
+
+Role-based assignment of workflow nodes
+
+
+
+---
+
+4. Welcome Wizard for New Joiners
+
+Why: Smooth first-time experience
+Steps:
+
+1. Confirm personal details
+
+
+2. Upload profile photo
+
+
+3. Meet your team (org chart snippet)
+
+
+
+Shows % progress
+
+Gives “Getting Started” badge
+
+
+
+---
+
+🕒 Attendance & Activity Tracking Module
+
+🔥 Purpose:
+
+Track when employees log in/out, total hours, and attendance trends.
+
+Employee Features:
+
+Auto Clock-In on login
+
+Manual Clock-Out or auto via session timeout
+
+View own Attendance Calendar
+
+See total hours, late days, or absents
+
+
+Manager Features:
+
+View team’s login/logout summary
+
+Weekly working hours chart
+
+
+HR Features:
+
+Full reporting by department, date, or status
+
+Export to Excel/CSV
+
+Leave and holiday auto-sync
+
+Set work hours policy & grace period
+
+
+Super-Admin:
+
+Configure attendance rules
+
+Enable/disable manual clock-out
+
+Enforce session timeout rules
+
+Track device/IP per login
+
+Tie into Audit Logs
+
+
+
+---
+
+🔐 Optional Add-ons
+
+2FA Authentication
+
+Device/IP restriction
+
+GDPR Tools (Download Data / Delete Account)
+
+Auto Logout on Inactivity
+
+
+
+---
+
+🚧 Future Modular Features
+
+Shift/Attendance Scheduler
+
+Expense Reimbursements
+
+Job Openings & Referrals
+
+Task Tracker & Project Assignment
+
+
+
+---
+
