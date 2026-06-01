@@ -23,4 +23,6 @@ const AnnouncementSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+AnnouncementSchema.index({ status: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Announcement', AnnouncementSchema);

@@ -46,4 +46,6 @@ const documentSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+documentSchema.index({ uploadedBy: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Document', documentSchema);

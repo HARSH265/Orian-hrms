@@ -28,7 +28,15 @@ const getDocumentById = async (id) => {
 };
 
 const updateDocument = async (id, body) => {
-    const document = await Document.findByIdAndUpdate(id, body, {
+    // Whitelist allowed fields
+    const allowedFields = ['title', 'description', 'fileUrl', 'category', 'acknowledgementRequired'];
+    const filteredUpdates = {};
+    allowedFields.forEach(field => {
+        if (body[field] !== undefined) {
+            filteredUpdates[field] = body[field];
+        }
+    });
+    const document = await Document.findByIdAndUpdate(id, filteredUpdates, {
         new: true,
         runValidators: true,
     });

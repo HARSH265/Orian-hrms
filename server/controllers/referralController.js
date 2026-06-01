@@ -2,7 +2,8 @@ const { submitReferral, getAllReferrals, updateReferralStatus } = require('../se
 
 exports.submitReferral = async (req, res, next) => {
     try {
-        const referral = await submitReferral({ ...req.body, referredBy: req.user.id });
+        const { candidateName, candidateEmail, candidatePhone, job } = req.body;
+        const referral = await submitReferral({ candidateName, candidateEmail, candidatePhone, job, referredBy: req.user.id });
         res.status(201).json({ success: true, data: referral });
     } catch (error) { next(error); }
 };

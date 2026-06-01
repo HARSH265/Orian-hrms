@@ -40,4 +40,6 @@ const AssetSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+AssetSchema.index({ assignedTo: 1 });
+
 module.exports = mongoose.model('Asset', AssetSchema);

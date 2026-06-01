@@ -19,7 +19,15 @@ const getAnnouncementById = async (id) => {
 };
 
 const updateAnnouncement = async (id, data) => {
-    const announcement = await Announcement.findByIdAndUpdate(id, data, {
+    // Whitelist allowed fields
+    const allowedFields = ['title', 'content', 'status'];
+    const filteredUpdates = {};
+    allowedFields.forEach(field => {
+        if (data[field] !== undefined) {
+            filteredUpdates[field] = data[field];
+        }
+    });
+    const announcement = await Announcement.findByIdAndUpdate(id, filteredUpdates, {
         new: true,
         runValidators: true,
     });

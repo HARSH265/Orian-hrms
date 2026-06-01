@@ -18,7 +18,15 @@ const updateSkill = async (id, updateData) => {
     if (!skill) {
         return null;
     }
-    const updated = await Skill.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    // Whitelist allowed fields
+    const allowedFields = ['name', 'category'];
+    const filteredUpdates = {};
+    allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+            filteredUpdates[field] = updateData[field];
+        }
+    });
+    const updated = await Skill.findByIdAndUpdate(id, filteredUpdates, { new: true, runValidators: true });
     return updated;
 };
 
