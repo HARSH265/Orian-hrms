@@ -53,7 +53,7 @@ const LoginPage = () => {
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#f0f2f5' }}>
-            <Card style={{ width: 400 }}>
+            <Card style={{ width: '100%', maxWidth: 400, margin: '0 16px' }}>
                 <Title level={2} style={{ textAlign: 'center' }}>Orion HRMS Login</Title>
                 
                 {twoFactorRequired ? (

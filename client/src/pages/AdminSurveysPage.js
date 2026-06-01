@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Table, Typography, Tag, Space, Modal, Popconfirm, message } from 'antd';
+import { Button, Table, Typography, Space, Modal, Popconfirm, message } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 import { PlusOutlined, EyeOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { fetchAllSurveys, closeSurvey } from '../features/survey/surveyThunks';
 import { fetchAllUsers } from '../features/admin/adminThunks';
@@ -44,10 +45,7 @@ const AdminSurveysPage = () => {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
-            render: status => {
-                const color = status === 'active' ? 'green' : status === 'closed' ? 'volcano' : 'geekblue';
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
-            },
+            render: status => <StatusTag status={status} />,
         },
         { title: 'Recipients', dataIndex: 'recipients', key: 'recipients', render: r => r.length },
         { title: 'Created', dataIndex: 'createdAt', key: 'createdAt', render: date => format(new Date(date), 'MMM d, yyyy') },

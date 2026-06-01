@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Table, Button, Space, Tag, message, Typography, Card } from 'antd';
+import { Table, Button, Space, message, Typography, Card } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 import { 
     fetchTeamExpenses, 
     updateTeamExpenseStatus, 
@@ -50,7 +51,7 @@ const ExpenseApprovalPage = () => {
         { title: 'Description', dataIndex: 'description' },
         { 
             title: 'Status', dataIndex: 'status', 
-            render: status => <Tag color={status === 'Approved' ? 'success' : status === 'Denied' ? 'error' : 'warning'}>{status.toUpperCase()}</Tag>
+            render: status => <StatusTag status={status} />
         },
         {
             title: 'Action', key: 'action',

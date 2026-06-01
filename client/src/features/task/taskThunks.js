@@ -2,6 +2,7 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { extractErrorMessage } from '../../utils/errorExtractor';
 
 // For the Employee's "My Tasks" page - UPGRADED
 export const fetchMyTasks = createAsyncThunk('task/fetchMyTasks',
@@ -14,7 +15,7 @@ export const fetchMyTasks = createAsyncThunk('task/fetchMyTasks',
       const { data } = await api.get(`/tasks/my-tasks?${params.toString()}`);
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -31,7 +32,7 @@ export const fetchTeamTasks = createAsyncThunk('task/fetchTeamTasks',
       const { data } = await api.get(`/tasks/team-tasks?${params.toString()}`);
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -45,7 +46,7 @@ export const createTask = createAsyncThunk('task/create',
       const { data } = await api.post('/tasks', taskData);
       return data.data; // This becomes action.payload
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -75,7 +76,7 @@ export const fetchTasksCreatedByMe = createAsyncThunk(
       // Return the full response object
       return data; 
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -97,7 +98,7 @@ export const fetchAllTasks = createAsyncThunk(
       const { data } = await api.get(`/tasks/all?${params.toString()}`);
       return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -108,7 +109,7 @@ export const fetchTaskById = createAsyncThunk('task/fetchById',
       const { data } = await api.get(`/tasks/${taskId}`);
       return data.data; // The fully populated task object
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -119,7 +120,7 @@ export const createSubTask = createAsyncThunk('task/createSubTask',
       const { data } = await api.post(`/tasks/${parentId}/subtasks`, subTaskData);
       return data.data; // The newly created sub-task object
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -168,7 +169,7 @@ export const requestTaskReopen = createAsyncThunk('task/requestReopen',
       }
       return response.data; // Returns a success message
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -185,7 +186,7 @@ export const resolveTaskReopen = createAsyncThunk('task/resolveReopen',
       }
       return { ...response.data, status }; // Pass status along for potential optimistic UI
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -198,7 +199,7 @@ export const updateTaskDependencies = createAsyncThunk('task/updateDependencies'
       const { data } = await api.put(`/tasks/${taskId}/dependencies`, { dependsOn });
       return data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -212,7 +213,7 @@ export const logTimeToTask = createAsyncThunk('task/logTime',
       const { data } = await api.post(`/tasks/${taskId}/log-time`, timeLogData);
       return data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -225,7 +226,7 @@ export const toggleTaskSubscription = createAsyncThunk('task/toggleSubscription'
       const { data } = await api.post(`/tasks/${taskId}/subscribe`);
       return { task: data.data, message: data.message }; // Return task and success message
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );

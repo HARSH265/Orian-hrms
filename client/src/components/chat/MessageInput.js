@@ -49,12 +49,14 @@ const MessageInput = () => {
         onPressEnter={handleSendMessage}
         placeholder="Type a message..."
         autoComplete="off"
+        aria-label="Type a message"
       />
       <Button
         type="primary"
         icon={<SendOutlined />}
         onClick={handleSendMessage}
         style={{ marginLeft: '8px' }}
+        aria-label="Send message"
       />
     </div>
   );

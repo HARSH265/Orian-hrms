@@ -1,62 +1,54 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
+import { Spin } from 'antd';
+import { getMe } from './features/auth/authThunks';
 
 // --- Core Layouts and Authentication ---
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-//import WelcomeWizardPage from './pages/WelcomeWizardPage'; // <-- THIS IMPORT IS NOW CORRECTLY ADDED BACK
 import WizardGuard from './components/WizardGuard';
 
-// --- Standard User Pages ---
-import ProfilePage from './pages/ProfilePage';
-import LeavePage from './pages/LeavePage';
-import MyExpensesPage from './pages/MyExpensesPage';
-import MyAttendancePage from './pages/MyAttendancePage';
-import TeamAttendancePage from './pages/TeamAttendancePage';
-import MySurveysPage from './pages/MySurveysPage'; 
-import SurveyTakerPage from './pages/SurveyTakerPage'; 
-import MyDocumentsPage from './pages/MyDocumentsPage';
-import DirectoryPage from './pages/DirectoryPage';
+// Lazy load page components
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+const LeavePage = React.lazy(() => import('./pages/LeavePage'));
+const MyExpensesPage = React.lazy(() => import('./pages/MyExpensesPage'));
+const MyAttendancePage = React.lazy(() => import('./pages/MyAttendancePage'));
+const TeamAttendancePage = React.lazy(() => import('./pages/TeamAttendancePage'));
+const MySurveysPage = React.lazy(() => import('./pages/MySurveysPage'));
+const SurveyTakerPage = React.lazy(() => import('./pages/SurveyTakerPage'));
+const MyDocumentsPage = React.lazy(() => import('./pages/MyDocumentsPage'));
+const DirectoryPage = React.lazy(() => import('./pages/DirectoryPage'));
+const TeamPage = React.lazy(() => import('./pages/TeamPage'));
+const ExpenseApprovalPage = React.lazy(() => import('./pages/ExpenseApprovalPage'));
+const PerformancePage = React.lazy(() => import('./pages/PerformancePage'));
+const TaskRouterPage = React.lazy(() => import('./pages/TaskRouterPage'));
+const AdminUserPage = React.lazy(() => import('./pages/AdminUserPage'));
+const DepartmentPage = React.lazy(() => import('./pages/DepartmentPage'));
+const AdminLeavePage = React.lazy(() => import('./pages/AdminLeavePage'));
+const AnnouncementAdminPage = React.lazy(() => import('./pages/AnnouncementAdminPage'));
+const AssetAdminPage = React.lazy(() => import('./pages/AssetAdminPage'));
+const ChecklistTemplatePage = React.lazy(() => import('./pages/ChecklistTemplatePage'));
+const AdminExpensesPage = React.lazy(() => import('./pages/AdminExpensesPage'));
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
+const AdminDashboardPage = React.lazy(() => import('./pages/AdminDashboardPage'));
+const AdminPerformancePage = React.lazy(() => import('./pages/AdminPerformancePage'));
+const AdminSkillsPage = React.lazy(() => import('./pages/AdminSkillsPage'));
+const AdminLeavePoliciesPage = React.lazy(() => import('./pages/AdminLeavePoliciesPage'));
+const AdminSurveysPage = React.lazy(() => import('./pages/AdminSurveysPage'));
+const SurveyResultsPage = React.lazy(() => import('./pages/SurveyResultsPage'));
+const AdminDocumentsPage = React.lazy(() => import('./pages/AdminDocumentsPage'));
+const AdminSettingsPage = React.lazy(() => import('./pages/AdminSettingsPage'));
+const AdminOrgChartEditorPage = React.lazy(() => import('./pages/AdminOrgChartEditorPage'));
+const AdminCustomFieldsPage = React.lazy(() => import('./pages/AdminCustomFieldsPage'));
+const JobOpeningsPage = React.lazy(() => import('./pages/JobOpeningsPage'));
+const AdminJobsPage = React.lazy(() => import('./pages/AdminJobsPage'));
+const AdminReferralsPage = React.lazy(() => import('./pages/AdminReferralsPage'));
+const AdminRolesPage = React.lazy(() => import('./pages/AdminRolesPage'));
 
-// --- Manager Pages ---
-import TeamPage from './pages/TeamPage';
-import ExpenseApprovalPage from './pages/ExpenseApprovalPage';
-import PerformancePage from './pages/PerformancePage'; 
-
-// --- Task Management Pages ---
-import TaskRouterPage from './pages/TaskRouterPage';
-
-// --- Admin Pages ---
-import AdminUserPage from './pages/AdminUserPage';
-import DepartmentPage from './pages/DepartmentPage';
-import AdminLeavePage from './pages/AdminLeavePage';
-import AnnouncementAdminPage from './pages/AnnouncementAdminPage';
-import AssetAdminPage from './pages/AssetAdminPage';
-import ChecklistTemplatePage from './pages/ChecklistTemplatePage';
-import AdminExpensesPage from './pages/AdminExpensesPage';
-import ReportsPage from './pages/ReportsPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import AdminPerformancePage from './pages/AdminPerformancePage';
-import AdminSkillsPage from './pages/AdminSkillsPage';
-import AdminLeavePoliciesPage from './pages/AdminLeavePoliciesPage';
-import AdminSurveysPage from './pages/AdminSurveysPage';
-import SurveyResultsPage from './pages/SurveyResultsPage';
-import AdminDocumentsPage from './pages/AdminDocumentsPage';
-import AdminSettingsPage from './pages/AdminSettingsPage';
-import AdminOrgChartEditorPage from './pages/AdminOrgChartEditorPage';
-import AdminCustomFieldsPage from './pages/AdminCustomFieldsPage'
-// --- NEW: Job Openings & Referrals Pages ---
-import JobOpeningsPage from './pages/JobOpeningsPage';
-import AdminJobsPage from './pages/AdminJobsPage';
-import AdminReferralsPage from './pages/AdminReferralsPage';
-import AdminRolePage from './pages/AdminRolesPage'
-
-// --- Redux Thunks ---
-import { getMe } from './features/auth/authThunks';
 
 function App() {
   const dispatch = useDispatch();
@@ -70,62 +62,64 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Routes>
-        {/* Public Route */}
-        <Route path="/login" element={<LoginPage />} />
+      <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>}>
+        <Routes>
+          {/* Public Route */}
+          <Route path="/login" element={<LoginPage />} />
 
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute />}>
-          {/* The WizardGuard intercepts new users */}
-          <Route element={<WizardGuard />}>
-            {/* All standard authenticated routes use the MainLayout */}
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<DashboardPage />} />
-              
-              {/* User & Manager Routes */}
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/leave" element={<LeavePage />} />
-              <Route path="/expenses" element={<MyExpensesPage />} /> 
-              <Route path="/team" element={<TeamPage />} />
-              <Route path="/expenses/approvals" element={<ExpenseApprovalPage />} />
-              <Route path="/tasks" element={<TaskRouterPage />} />
-              <Route path="/directory" element={<DirectoryPage />} />
-              <Route path="/performance" element={<PerformancePage />} />
-              <Route path="/attendance" element={<MyAttendancePage />} />
-              <Route path="/team/attendance" element={<TeamAttendancePage />} />    
-               <Route path="/documents" element={<MyDocumentsPage />} />
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            {/* The WizardGuard intercepts new users */}
+            <Route element={<WizardGuard />}>
+              {/* All standard authenticated routes use the MainLayout */}
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<DashboardPage />} />
+                
+                {/* User & Manager Routes */}
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/leave" element={<LeavePage />} />
+                <Route path="/expenses" element={<MyExpensesPage />} /> 
+                <Route path="/team" element={<TeamPage />} />
+                <Route path="/expenses/approvals" element={<ExpenseApprovalPage />} />
+                <Route path="/tasks" element={<TaskRouterPage />} />
+                <Route path="/directory" element={<DirectoryPage />} />
+                <Route path="/performance" element={<PerformancePage />} />
+                <Route path="/attendance" element={<MyAttendancePage />} />
+                <Route path="/team/attendance" element={<TeamAttendancePage />} />    
+                 <Route path="/documents" element={<MyDocumentsPage />} />
 
-               {/* --- NEW: Job Openings Route (for all users) --- */}
-              <Route path="/jobs" element={<JobOpeningsPage />} />
-              <Route path="/surveys" element={<MySurveysPage />} /> 
-              <Route path="/surveys/:surveyId" element={<SurveyTakerPage />} /> 
+                 {/* --- NEW: Job Openings Route (for all users) --- */}
+                <Route path="/jobs" element={<JobOpeningsPage />} />
+                <Route path="/surveys" element={<MySurveysPage />} /> 
+                <Route path="/surveys/:surveyId" element={<SurveyTakerPage />} /> 
 
-              {/* Admin-Specific Routes */}
-              <Route path="/admin/users" element={<AdminUserPage />} />
-              <Route path="/admin/departments" element={<DepartmentPage />} />
-              <Route path="/admin/leaves" element={<AdminLeavePage />} />
-              <Route path="/admin/expenses" element={<AdminExpensesPage />} /> 
-              <Route path="/admin/announcements" element={<AnnouncementAdminPage />} />
-              <Route path="/admin/assets" element={<AssetAdminPage />} />
-              <Route path="/admin/checklist-templates" element={<ChecklistTemplatePage />} />
-              <Route path="/reports" element={<ReportsPage />} />
-              <Route path="/admin/reports&analytics" element={<AdminDashboardPage />} />
-              <Route path="/admin/performance" element={<AdminPerformancePage />} />
-              <Route path="/admin/jobs" element={<AdminJobsPage />} />
-              <Route path="/admin/referrals" element={<AdminReferralsPage />} />
-              <Route path="/admin/skills" element={<AdminSkillsPage />} />
-               <Route path="/admin/leave-policies" element={<AdminLeavePoliciesPage />} />
-               <Route path="/admin/surveys" element={<AdminSurveysPage />} />
-               <Route path="/admin/surveys/:surveyId/results" element={<SurveyResultsPage />}/>
-               <Route path="/admin/documents" element={<AdminDocumentsPage />} />
-               <Route path="/admin/roles" element={<AdminRolePage/>} />
-                <Route path="/admin/settings" element={<AdminSettingsPage />} /> 
-                <Route path="/admin/org-chart-editor" element={<AdminOrgChartEditorPage />} />
-                <Route path="/admin/settings/custom-fields" element={<AdminCustomFieldsPage />} />              
+                {/* Admin-Specific Routes */}
+                <Route path="/admin/users" element={<AdminUserPage />} />
+                <Route path="/admin/departments" element={<DepartmentPage />} />
+                <Route path="/admin/leaves" element={<AdminLeavePage />} />
+                <Route path="/admin/expenses" element={<AdminExpensesPage />} /> 
+                <Route path="/admin/announcements" element={<AnnouncementAdminPage />} />
+                <Route path="/admin/assets" element={<AssetAdminPage />} />
+                <Route path="/admin/checklist-templates" element={<ChecklistTemplatePage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/admin/reports&analytics" element={<AdminDashboardPage />} />
+                <Route path="/admin/performance" element={<AdminPerformancePage />} />
+                <Route path="/admin/jobs" element={<AdminJobsPage />} />
+                <Route path="/admin/referrals" element={<AdminReferralsPage />} />
+                <Route path="/admin/skills" element={<AdminSkillsPage />} />
+                 <Route path="/admin/leave-policies" element={<AdminLeavePoliciesPage />} />
+                 <Route path="/admin/surveys" element={<AdminSurveysPage />} />
+                 <Route path="/admin/surveys/:surveyId/results" element={<SurveyResultsPage />}/>
+                 <Route path="/admin/documents" element={<AdminDocumentsPage />} />
+                 <Route path="/admin/roles" element={<AdminRolesPage/>} />
+                  <Route path="/admin/settings" element={<AdminSettingsPage />} /> 
+                  <Route path="/admin/org-chart-editor" element={<AdminOrgChartEditorPage />} />
+                  <Route path="/admin/settings/custom-fields" element={<AdminCustomFieldsPage />} />              
+              </Route>
             </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </ErrorBoundary>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Table, Button, Space, Tag, message, Typography, Card, Switch } from 'antd';
+import { Table, Button, Space, message, Typography, Card, Switch } from 'antd';
 import { fetchTeamLeaveRequests, updateTeamLeaveRequest } from '../features/manager/managerThunks';
 import TeamLeaveModal from '../components/TeamLeaveModal';
+import StatusTag from '../components/common/StatusTag';
 
 const { Title, Text } = Typography;
 
@@ -52,13 +53,7 @@ const TeamPage = () => {
         {
             title: 'Status',
             dataIndex: 'status',
-            render: (status) => {
-                let color = 'default';
-                if (status === 'Approved') color = 'success';
-                if (status === 'Pending') color = 'warning';
-                if (status === 'Denied') color = 'error';
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
-            },
+            render: (status) => <StatusTag status={status} />,
         },
         {
             title: 'Action',

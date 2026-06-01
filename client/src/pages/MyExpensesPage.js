@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Form, Input, Button, DatePicker, Table, Tag, message, Typography, Row, Col, Select, InputNumber } from 'antd';
+import { Card, Form, Input, Button, DatePicker, Table, message, Typography, Row, Col, Select, InputNumber } from 'antd';
 import { fetchMyExpenses, submitExpense } from '../features/expense/expenseThunks';
+import StatusTag from '../components/common/StatusTag';
 import FileUpload from '../components/FileUpload'; // <-- Ensure this is imported
 
 const { Title, Text } = Typography;
@@ -44,10 +45,7 @@ const MyExpensesPage = () => {
         { title: 'Description', dataIndex: 'description' },
         {
             title: 'Status', dataIndex: 'status',
-            render: (status) => {
-                let color = status === 'Approved' ? 'success' : status === 'Denied' ? 'error' : 'warning';
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
-            }
+            render: (status) => <StatusTag status={status} />,
         },
         // --- 2. NEW: Column to view the uploaded receipt ---
         {
@@ -58,7 +56,8 @@ const MyExpensesPage = () => {
                 if (url) {
                     // Assuming your backend is running on localhost:5004
                     // For production, you would use your actual domain
-                    return <a href={`http://localhost:5004${url}`} target="_blank" rel="noopener noreferrer">View</a>;
+                    const downloadUrl = `${process.env.REACT_APP_API_URL || ''}${url}`;
+                    return <a href={downloadUrl} target="_blank" rel="noopener noreferrer">View</a>;
                 }
                 return <Text type="secondary">N/A</Text>;
             }

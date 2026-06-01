@@ -17,4 +17,4 @@ const ViewSwitcher = ({ currentView, onViewChange }) => {
     );
 };
 
-export default ViewSwitcher;
+export default React.memo(ViewSwitcher);

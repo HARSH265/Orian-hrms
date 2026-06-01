@@ -23,12 +23,13 @@ const ChatWidget = () => {
         tooltip="Open Chat"
         onClick={toggleChat}
         size="large"
+        aria-label="Toggle chat"
       />
     );
   }
 
   return (
-     <div className="chat-widget-container">
+     <div className="chat-widget-container" role="dialog" aria-label="Chat">
       <Layout className="chat-widget-layout">
         <Sider width={280} className="chat-widget-sider">
           {/* --- PASS THE toggleChat FUNCTION AS THE onClose PROP --- */}

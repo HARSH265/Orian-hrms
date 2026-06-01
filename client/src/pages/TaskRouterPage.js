@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { Spin } from 'antd';
 
 import MyTasksPage from './MyTasksPage';
-import HighLevelTasksPage from './HighLevelTasksPage.js';
+import HighLevelTasksPage from './HighLevelTasksPage';
 
 // --- NEW IMPORTS ---
 import TaskDetailsModal from '../components/tasks/TaskDetailsModal';

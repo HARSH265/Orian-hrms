@@ -6,6 +6,7 @@ import { List, Spin, Tag, Select, message, Typography, Row, Col, Input, Avatar, 
 import { fetchMyTasks, updateTaskStatus, requestTaskReopen } from '../../features/task/taskThunks';
 import { openTaskDetailsModal } from '../../features/task/taskSlice';
 import debounce from 'lodash.debounce';
+import FilterBar from '../common/FilterBar';
 
 const { Text, Link } = Typography;
 
@@ -81,18 +82,25 @@ const MyTasksList = () => {
 
     return (
         <>
-            {/* Filter and Sort Bar */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                <Col xs={24} sm={12}><Input.Search placeholder="Search my tasks..." onChange={(e) => debouncedSearch(e.target.value)} allowClear /></Col>
-                <Col xs={12} sm={6}><Select placeholder="Filter by Status" onChange={(value) => setFilters(prev => ({ ...prev, status: value }))} allowClear style={{ width: '100%' }}
-                    options={[{ value: 'To Do', label: 'To Do' }, { value: 'In Progress', label: 'In Progress' }, { value: 'Done', label: 'Done' }]}
-                /></Col>
-                <Col xs={12} sm={6}><Select placeholder="Sort by" defaultValue="dueDate_asc" onChange={(value) => {
+            <FilterBar
+                searchPlaceholder="Search my tasks..."
+                onSearch={(value) => debouncedSearch(value)}
+                onStatusChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                onSortChange={(value) => {
                     const [field, order] = value.split('_'); setSorter({ field, order });
-                }} style={{ width: '100%' }}
-                    options={[{ value: 'dueDate_asc', label: 'Due Date (Soonest)' }, { value: 'createdAt_desc', label: 'Newest' }, { value: 'priority_desc', label: 'Priority' }]}
-                /></Col>
-            </Row>
+                }}
+                statusOptions={[
+                    { value: 'To Do', label: 'To Do' },
+                    { value: 'In Progress', label: 'In Progress' },
+                    { value: 'Done', label: 'Done' },
+                ]}
+                sortOptions={[
+                    { value: 'dueDate_asc', label: 'Due Date (Soonest)' },
+                    { value: 'createdAt_desc', label: 'Newest' },
+                    { value: 'priority_desc', label: 'Priority' },
+                ]}
+                defaultSort="dueDate_asc"
+            />
 
             <List
                 dataSource={myTasks}

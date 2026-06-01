@@ -14,7 +14,6 @@ const FileUpload = ({ onUploadSuccess, onRemove, disabled = false }) => {
 
     const handleRemove = async () => {
         if (!fileInfo || !fileInfo.public_id) {
-            console.error("Remove failed: fileInfo.public_id is missing.", fileInfo);
             return;
         }
 
@@ -56,16 +55,12 @@ const FileUpload = ({ onUploadSuccess, onRemove, disabled = false }) => {
         onChange(info) {
             if (info.file.status === 'done') {
                 setIsUploading(false);
-                // --- ADD THIS DEBUG LOG ---
-                console.log("Server Response on Upload:", info.file.response); 
-                // --- END DEBUG LOG ---
 
                 if (info.file.response && info.file.response.success) {
                     message.success(`${info.file.name} file uploaded successfully`);
                     const { filePath, public_id } = info.file.response;
                     
                     if (!public_id) {
-                        console.error("Upload succeeded, but public_id was not received from the server!");
                         message.error("Upload succeeded, but an error occurred. Please try again.");
                         return;
                     }

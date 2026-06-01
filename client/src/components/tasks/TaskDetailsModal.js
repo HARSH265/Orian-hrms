@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Typography, List, Avatar, Form, Input, Button, message, Tag, Spin, Empty, Popover, Select, Space, Tabs, Descriptions, Divider, Tooltip, Row, Col, Popconfirm, Progress, InputNumber, DatePicker } from 'antd';
+import { Modal, Typography, List, Avatar, Form, Input, InputNumber, DatePicker, Button, message, Tag, Spin, Empty, Popover, Select, Space, Tabs, Descriptions, Divider, Tooltip, Row, Col, Popconfirm, Progress } from 'antd';
 import { 
     fetchTaskById, 
     addCommentToTask, 
@@ -22,27 +22,21 @@ import {
     LinkOutlined, HistoryOutlined,ClockCircleOutlined, EyeOutlined, EyeInvisibleOutlined, AppstoreAddOutlined
 } from '@ant-design/icons';
 import debounce from 'lodash.debounce';
-import moment from 'moment';
+import dayjs from 'dayjs';
+import CustomFieldInput from '../common/CustomFieldInput';
 
 const { Title, Text, Paragraph, Link } = Typography;
 const { Option } = Select;
 
-// Reusable helper for rendering custom field inputs
+// Reusable helper for rendering custom field inputs using shared component
 const renderCustomFieldInput = (field) => {
     const commonProps = {
         label: field.name,
-        name: ['customFieldValues', field._id], // The form path
+        name: ['customFieldValues', field._id],
         rules: [{ required: field.isRequired, message: `Please input a value for ${field.name}.` }],
     };
 
-    switch (field.fieldType) {
-        case 'Text': return <Form.Item {...commonProps}><Input /></Form.Item>;
-        case 'Number': return <Form.Item {...commonProps}><InputNumber style={{ width: '100%' }} /></Form.Item>;
-        case 'Date': return <Form.Item {...commonProps}><DatePicker style={{ width: '100%' }} /></Form.Item>;
-        case 'Select': return <Form.Item {...commonProps}><Select options={field.options.map(o => ({label: o, value: o}))} /></Form.Item>;
-        case 'MultiSelect': return <Form.Item {...commonProps}><Select mode="multiple" options={field.options.map(o => ({label: o, value: o}))} /></Form.Item>;
-        default: return null;
-    }
+    return <Form.Item {...commonProps}><CustomFieldInput field={field} /></Form.Item>;
 };
 
 const TaskDetailsModal = ({ open, onCancel, taskId }) => {
@@ -169,7 +163,7 @@ const TaskDetailsModal = ({ open, onCancel, taskId }) => {
         dispatch(logTimeToTask({ taskId, timeLogData: values })).unwrap()
             .then(() => {
                 message.success('Time logged successfully!');
-                timeLogForm.resetFields({ date: moment() }); // Reset form but keep today's date
+                timeLogForm.resetFields({ date: dayjs() }); // Reset form but keep today's date
             })
             .catch(err => message.error(err));
     };
@@ -273,7 +267,7 @@ const TaskDetailsModal = ({ open, onCancel, taskId }) => {
                             <Form.Item name="timeSpent" label="Time Spent (hours)" rules={[{ required: true }]}>
                                 <InputNumber min={0.1} step={0.5} style={{width: '100%'}} />
                             </Form.Item>
-                            <Form.Item name="date" label="Date" initialValue={moment()} rules={[{ required: true }]}>
+                            <Form.Item name="date" label="Date" initialValue={dayjs()} rules={[{ required: true }]}>
                                 <DatePicker style={{width: '100%'}} />
                             </Form.Item>
                             <Form.Item name="notes" label="Notes (Optional)">

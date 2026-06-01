@@ -37,10 +37,11 @@ const MainLayout = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar />
       <Layout>
         <Header />
-        <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', position: 'relative' }}>
+        <Content id="main-content" style={{ margin: '24px 16px', padding: 24, background: '#fff', position: 'relative' }}>
           {/* Outlet will render the matched child route (e.g., DashboardPage, ProfilePage) */}
           <Outlet />
            <ChatWidget />

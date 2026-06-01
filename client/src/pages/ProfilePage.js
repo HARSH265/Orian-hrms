@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Descriptions, Typography, Spin, Button, Modal, Form, Input, message, Avatar, List, Tag, Select, Popconfirm, Row, Col, Space, Timeline, Divider, DatePicker } from 'antd';
+import { Card, Descriptions, Typography, Spin, Button, Modal, Form, Input, message, Avatar, List, Tag, Select, Popconfirm, Row, Col, Space, Timeline, Divider, DatePicker, Skeleton } from 'antd';
 import { PlusOutlined,UserOutlined,ApartmentOutlined,UpCircleOutlined } from '@ant-design/icons';
 import { updateProfile, updateProfilePicture } from '../features/auth/authThunks';
 import { fetchAllSkills, addSkillToProfile, removeSkillFromProfile } from '../features/skill/skillThunks';
@@ -92,7 +92,7 @@ const ProfilePage = () => {
 
     // --- Render Logic ---
     if (authStatus === 'loading' && !user) {
-        return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}><Spin size="large" /></div>;
+        return <div style={{ padding: 24 }}><Skeleton active avatar paragraph={{ rows: 4 }} /></div>;
     }
 
      return (

@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { extractErrorMessage } from '../../utils/errorExtractor';
 
 // For Admin: Get all documents (active and inactive)
 export const fetchAllDocuments = createAsyncThunk(
@@ -9,7 +10,7 @@ export const fetchAllDocuments = createAsyncThunk(
       const { data } = await api.get('/documents');
       return data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -22,7 +23,7 @@ export const fetchMyDocuments = createAsyncThunk(
       const { data } = await api.get('/documents/my-documents');
       return data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -35,7 +36,7 @@ export const uploadDocument = createAsyncThunk(
       await api.post('/documents', documentData);
       dispatch(fetchAllDocuments()); // Refresh the admin list
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -50,7 +51,7 @@ export const acknowledgeDocument = createAsyncThunk(
       dispatch(fetchMyDocuments());
       dispatch(fetchAllDocuments());
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );
@@ -63,7 +64,7 @@ export const softDeleteDocument = createAsyncThunk(
       await api.delete(`/documents/${documentId}`);
       dispatch(fetchAllDocuments()); // Refresh the admin list
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
     }
   }
 );

@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { extractErrorMessage } from '../../utils/errorExtractor';
 
 // --- For the Employee's View ---
 
@@ -8,7 +9,7 @@ export const fetchMyExpenses = createAsyncThunk('expense/fetchMy', async (_, { r
     const { data } = await api.get('/expenses/my-expenses');
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -17,7 +18,7 @@ export const submitExpense = createAsyncThunk('expense/submit', async (expenseDa
     await api.post('/expenses', expenseData);
     dispatch(fetchMyExpenses()); // Refresh the user's personal list after submitting
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -29,7 +30,7 @@ export const fetchTeamExpenses = createAsyncThunk('expense/fetchTeam', async (_,
     const { data } = await api.get('/expenses/team-expenses');
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -39,7 +40,7 @@ export const updateTeamExpenseStatus = createAsyncThunk('expense/updateTeamStatu
     await api.put(`/expenses/${expenseId}/status`, { status });
     dispatch(fetchTeamExpenses()); // Refresh the team's list after action
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -51,7 +52,7 @@ export const fetchAllSystemExpenses = createAsyncThunk('expense/fetchAll', async
     const { data } = await api.get('/expenses/all');
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message || 'Failed to fetch all expenses');
+    return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -61,6 +62,6 @@ export const adminUpdateExpenseStatus = createAsyncThunk('expense/adminUpdateSta
     await api.put(`/expenses/${expenseId}/status`, { status });
     dispatch(fetchAllSystemExpenses()); // Refresh the GLOBAL list after action
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+      return rejectWithValue(extractErrorMessage(error));
   }
 });

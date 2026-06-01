@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Table, Button, Card, Typography, Modal, Form, Input, message, Select, Space, Popconfirm, Tag } from 'antd';
+import { Table, Button, Card, Typography, Modal, Form, Input, message, Select, Space, Popconfirm } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 import { fetchAllJobs, createJob /*, updateJob, deleteJob */ } from '../features/job/jobThunks';
 import { fetchAllDepartments } from '../features/department/departmentThunks';
 
@@ -46,7 +47,7 @@ const AdminJobsPage = () => {
     const columns = [
         { title: 'Title', dataIndex: 'title', key: 'title' },
         { title: 'Department', dataIndex: ['department', 'name'], key: 'department' },
-        { title: 'Status', dataIndex: 'status', key: 'status', render: status => <Tag color={status === 'Open' ? 'success' : 'default'}>{status}</Tag> },
+        { title: 'Status', dataIndex: 'status', key: 'status', render: status => <StatusTag status={status} /> },
         { title: 'Posted By', dataIndex: ['postedBy', 'name'], key: 'postedBy' },
         {
             title: 'Actions',

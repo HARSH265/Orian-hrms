@@ -21,6 +21,10 @@ export const SocketProvider = ({ children }) => {
         },
       });
 
+      newSocket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err.message);
+      });
+
       setSocket(newSocket);
 
       // Clean up the connection when the component unmounts or token changes

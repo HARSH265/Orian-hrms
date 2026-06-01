@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Form, Input, Button, DatePicker, Table, Tag, message, Typography, Row, Col, Popconfirm, Switch, Space, List, Divider, Select, Spin } from 'antd';
+import { Card, Form, Input, Button, DatePicker, Table, message, Typography, Row, Col, Popconfirm, Switch, Space, List, Divider, Select, Spin } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 import { fetchMyLeaveHistory, applyForLeave, withdrawLeave } from '../features/leave/leaveThunks';
 import { fetchMyLeaveBalances, fetchLeavePolicies } from '../features/leave-policy/leavePolicyThunks';
 import LeaveDetailsModal from '../components/LeaveDetailsModal';
@@ -98,13 +99,7 @@ const LeavePage = () => {
         { title: 'End Date', dataIndex: 'endDate', render: (date) => new Date(date).toLocaleDateString() },
         { title: 'Reason', dataIndex: 'reason' },
         {
-            title: 'Status', dataIndex: 'status', render: (status) => {
-                let color = 'default';
-                if (status === 'Approved') color = 'success';
-                if (status === 'Pending') color = 'warning';
-                if (status === 'Denied') color = 'error';
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
-            },
+            title: 'Status', dataIndex: 'status', render: (status) => <StatusTag status={status} />,
         },
        {
             title: 'Action',
@@ -204,140 +199,3 @@ const LeavePage = () => {
 };
 
 export default LeavePage;
-
-
-
-
-// import React, { useEffect, useState } from 'react';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { Card, Form, Input, Button, DatePicker, Table, Tag, message, Typography, Row, Col, Popconfirm, Switch, Space, List, Divider, Select,Spin } from 'antd';
-// import { fetchMyLeaveHistory, applyForLeave, withdrawLeave } from '../features/leave/leaveThunks';
-// import { fetchMyLeaveBalances } from '../features/leave-policy/leavePolicyThunks';
-
-// const { RangePicker } = DatePicker;
-// const { Title, Text } = Typography;
-
-// const LeavePage = () => {
-//     const dispatch = useDispatch();
-//     const [form] = Form.useForm();
-//     const [hideCompleted, setHideCompleted] = useState(false);
-    
-//     const { myBalances, status: balanceStatus } = useSelector((state) => state.leavePolicy);
-//     const { leaves, status: leaveStatus } = useSelector((state) => state.leave);
-
-//     useEffect(() => {
-//         dispatch(fetchMyLeaveHistory());
-//         dispatch(fetchMyLeaveBalances());
-//     }, [dispatch]);
-
-//     const filteredLeaves = hideCompleted
-//         ? leaves.filter(leave => leave.status === 'Pending' || leave.status === 'Approved')
-//         : leaves;
-
-//     const onFinish = (values) => {
-//         const leaveData = {
-//             startDate: values.dateRange[0].toISOString(),
-//             endDate: values.dateRange[1].toISOString(),
-//             reason: values.reason,
-//             leavePolicyId: values.leavePolicyId,
-//         };
-//         dispatch(applyForLeave(leaveData)).unwrap()
-//             .then(() => {
-//                 message.success('Leave request submitted!');
-//                 form.resetFields();
-//                 dispatch(fetchMyLeaveBalances()); // Refresh balances after submitting
-//             })
-//             .catch((err) => message.error(`Failed to submit: ${err}`));
-//     };
-
-//         const handleWithdraw = (leaveId) => {
-//         dispatch(withdrawLeave(leaveId))
-//             .unwrap()
-//             .then(() => message.success('Leave request withdrawn.'))
-//             .catch((err) => message.error(err));
-//     };
-
-//     const columns = [
-//         { title: 'Start Date', dataIndex: 'startDate', render: (date) => new Date(date).toLocaleDateString() },
-//         { title: 'End Date', dataIndex: 'endDate', render: (date) => new Date(date).toLocaleDateString() },
-//         { title: 'Reason', dataIndex: 'reason' },
-//         {
-//             title: 'Status',
-//             dataIndex: 'status',
-//             render: (status) => {
-//                 let color;
-//                 switch (status) {
-//                     case 'Approved': color = 'success'; break;
-//                     case 'Pending': color = 'warning'; break;
-//                     case 'Denied': color = 'error'; break;
-//                     case 'Withdrawn': color = 'default'; break;
-//                     default: color = 'processing';
-//                 }
-//                 return <Tag color={color}>{status.toUpperCase()}</Tag>;
-//             },
-//         },
-//         {
-//             title: 'Action',
-//             key: 'action',
-//             render: (_, record) => (
-//                 record.status === 'Pending' && (
-//                     <Popconfirm
-//                         title="Are you sure you want to withdraw this request?"
-//                         onConfirm={() => handleWithdraw(record._id)}
-//                         okText="Yes"
-//                         cancelText="No"
-//                     >
-//                         <Button type="link" danger size="small">Withdraw</Button>
-//                     </Popconfirm>
-//                 )
-//             ),
-//         },
-//     ];
-
-//     return (
-//         <Row gutter={[24, 24]}>
-//             <Col xs={24} lg={8}>
-//                 <Card title={<Title level={4}>Apply for Leave</Title>}>
-//                     <Title level={5}>My Leave Balances ({new Date().getFullYear()})</Title>
-//                     {balanceStatus === 'loading' && <Spin />}
-//                     <List
-//                         dataSource={myBalances}
-//                         renderItem={balance => (
-//                             <List.Item>
-//                                 <List.Item.Meta title={balance.leavePolicy.name} />
-//                                 <Text strong>{balance.totalDays - balance.daysTaken} / {balance.totalDays}</Text>
-//                             </List.Item>
-//                         )}
-//                         locale={{ emptyText: "No leave policies have been assigned to you."}}
-//                     />
-//                     <Divider />
-//                     <Form form={form} layout="vertical" onFinish={onFinish}>
-//                          <Form.Item name="leavePolicyId" label="Leave Type" rules={[{ required: true }]}>
-//                             <Select 
-//                                 placeholder="Select leave type" 
-//                                 options={myBalances.map(b => ({ value: b.leavePolicy._id, label: b.leavePolicy.name }))}
-//                                 disabled={myBalances.length === 0}
-//                             />
-//                         </Form.Item>
-//                         <Form.Item name="dateRange" label="Select Dates" rules={[{ required: true }]}>
-//                             <RangePicker style={{ width: '100%' }} />
-//                         </Form.Item>
-//                         <Form.Item name="reason" label="Reason" rules={[{ required: true }]}>
-//                             <Input.TextArea rows={3} />
-//                         </Form.Item>
-//                         <Form.Item>
-//                             <Button type="primary" htmlType="submit" loading={leaveStatus === 'loading'}>Submit Request</Button>
-//                         </Form.Item>
-//                     </Form>
-//                 </Card>
-//             </Col>
-//             <Col xs={24} lg={16}>
-//                 <Card title={<Title level={4}>My Leave History</Title>} extra={<Space><Text>Hide Completed</Text><Switch checked={hideCompleted} onChange={setHideCompleted} /></Space>}>
-//                     <Table columns={columns} dataSource={filteredLeaves} rowKey="_id" loading={leaveStatus === 'loading'} scroll={{ x: true }} />
-//                 </Card>
-//             </Col>
-//         </Row>
-//     );
-// };
-
-// export default LeavePage;

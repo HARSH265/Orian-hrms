@@ -26,14 +26,14 @@ const MessageList = () => {
   }
 
   return (
-    <div className="message-list-container">
+    <div className="message-list-container" aria-live="polite">
       <List
         dataSource={activeMessages}
         renderItem={(message) => {
           const isMe = message.sender._id === loggedInUser._id;
           return (
             <List.Item className={`message-item ${isMe ? 'sent' : 'received'}`}>
-              <div className="message-bubble">
+              <div className="message-bubble" role="article" aria-label={message.sender?.name || 'Message'}>
                 {!isMe && (
                    <Text strong className="message-sender">{message.sender.name}</Text>
                 )}

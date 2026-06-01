@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import { SocketProvider } from './context/SocketContext';
 import 'antd/dist/reset.css';
+import './styles/accessibility.css';
 
 // Redux
 import { Provider } from 'react-redux';

@@ -23,8 +23,8 @@
 }
 
 .gantt-header-side {
-    width: 250px;
-    min-width: 250px;
+    width: min(250px, 40vw);
+    min-width: min(250px, 40vw);
     padding: 8px 12px;
     border-right: 1px solid #f0f0f0;
     box-sizing: border-box;
@@ -73,8 +73,8 @@
 }
 
 .gantt-row-side {
-    width: 250px;
-    min-width: 250px;
+    width: min(250px, 40vw);
+    min-width: min(250px, 40vw);
     padding: 0 12px;
     border-right: 1px solid #f0f0f0;
     display: flex;

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Tag, Typography, Spin, Alert } from 'antd';
+import { Card, Table, Typography, Spin, Alert } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 // Let's rename the thunk for clarity as discussed
 import { fetchMyAttendance } from '../features/attendance/attendanceThunks';
 
@@ -51,14 +52,7 @@ const MyAttendancePage = () => {
             title: 'Status',
             dataIndex: 'status',
             key: 'status',
-            render: (status) => {
-                let color = 'default';
-                if (status === 'Present') color = 'success';
-                if (status === 'On Leave') color = 'blue';
-                if (status === 'Holiday') color = 'gold';
-                if (status === 'Absent') color = 'error';
-                return <Tag color={color}>{status}</Tag>;
-            }
+            render: (status) => <StatusTag status={status} />,
         },
     ];
 

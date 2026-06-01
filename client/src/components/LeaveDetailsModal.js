@@ -1,21 +1,14 @@
 // In: client/src/components/LeaveDetailsModal.js
 
 import React from 'react';
-import { Modal, Descriptions, Tag, Typography, Button } from 'antd';
+import { Modal, Descriptions, Typography, Button } from 'antd';
 import { PaperClipOutlined } from '@ant-design/icons';
+import StatusTag from './common/StatusTag';
 
 const { Text, Link } = Typography;
 
 const LeaveDetailsModal = ({ isOpen, onCancel, leaveDetails }) => {
     if (!leaveDetails) return null;
-
-    const getStatusTag = (status) => {
-        let color = 'default';
-        if (status === 'Approved') color = 'success';
-        if (status === 'Pending') color = 'warning';
-        if (status === 'Denied') color = 'error';
-        return <Tag color={color}>{status?.toUpperCase()}</Tag>;
-    };
 
     return (
         <Modal
@@ -34,7 +27,7 @@ const LeaveDetailsModal = ({ isOpen, onCancel, leaveDetails }) => {
                     {`${new Date(leaveDetails.startDate).toLocaleDateString()} - ${new Date(leaveDetails.endDate).toLocaleDateString()}`}
                 </Descriptions.Item>
                 <Descriptions.Item label="Reason">{leaveDetails.reason}</Descriptions.Item>
-                <Descriptions.Item label="Status">{getStatusTag(leaveDetails.status)}</Descriptions.Item>
+                <Descriptions.Item label="Status"><StatusTag status={leaveDetails.status} /></Descriptions.Item>
                 
                 {/* Conditionally show manager's notes */}
                 {(leaveDetails.status === 'Approved' || leaveDetails.status === 'Denied') && (

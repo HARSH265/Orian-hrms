@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { List, Button, Card, Typography, Modal, Form, Input, message, Spin, Tag, Descriptions, Divider } from 'antd';
+import { List, Button, Card, Typography, Modal, Form, Input, message, Spin, Descriptions, Divider } from 'antd';
 import { fetchTeamReviews, submitManagerReview } from '../../features/review/reviewThunks';
+import StatusTag from '../common/StatusTag';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -50,7 +51,7 @@ const TeamReviews = () => {
                         <Card style={{ width: '100%' }}>
                              <Descriptions title={`${review.employee.name} - ${review.cycleName}`} bordered>
                                 <Descriptions.Item label="Status">
-                                    <Tag color={review.status === 'Complete' ? 'success' : 'processing'}>{review.status}</Tag>
+                                    <StatusTag status={review.status} />
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Self-Assessment Submitted">
                                     {review.employeeSubmitDate ? new Date(review.employeeSubmitDate).toLocaleDateString() : 'Pending'}

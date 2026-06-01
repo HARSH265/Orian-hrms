@@ -38,9 +38,7 @@ const TeamLeaveModal = ({ isOpen, onCancel, leaveRequestId, onUpdate }) => {
             .then(values => {
                 onUpdate(leaveRequestId, 'Denied', values.managerNotes);
             })
-            .catch(info => {
-                console.log('Validation Failed:', info);
-            });
+            .catch(() => {});
     };
 
     const request = leaveData?.request;

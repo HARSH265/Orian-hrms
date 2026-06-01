@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Table, Button, Card, Typography, Modal, Form, Input, message, Space, Popconfirm, Select, DatePicker, Tag } from 'antd';
+import { Table, Button, Card, Typography, Modal, Form, Input, message, Space, Popconfirm, Select, DatePicker } from 'antd';
+import StatusTag from '../components/common/StatusTag';
 import { fetchAllAssets, createAsset, updateAsset, deleteAsset } from '../features/asset/assetThunks';
 import { fetchAllUsers } from '../features/admin/adminThunks'; // We need users for the assignment dropdown
 import dayjs from 'dayjs';
@@ -71,13 +72,7 @@ const AssetAdminPage = () => {
             title: 'Status', 
             dataIndex: 'status', 
             key: 'status',
-            render: (status) => {
-                let color = 'default';
-                if (status === 'Assigned') color = 'processing';
-                if (status === 'Available') color = 'success';
-                if (status === 'Retired') color = 'error';
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
-            }
+            render: (status) => <StatusTag status={status} />,
         },
         { title: 'Assigned To', dataIndex: ['assignedTo', 'name'], key: 'assignedTo' },
         {

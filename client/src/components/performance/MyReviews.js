@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { List, Button, Card, Typography, Modal, Form, Input, message, Spin, Tag, Descriptions } from 'antd';
+import { List, Button, Card, Typography, Modal, Form, Input, message, Spin, Descriptions } from 'antd';
 import { fetchMyReviews, submitSelfAssessment } from '../../features/review/reviewThunks';
+import StatusTag from '../common/StatusTag';
 
 const { Title, Text } = Typography;
 
@@ -50,7 +51,7 @@ const MyReviews = () => {
                         <Card style={{ width: '100%' }}>
                             <Descriptions title={review.cycleName} bordered>
                                 <Descriptions.Item label="Status">
-                                    <Tag color={review.status === 'Complete' ? 'success' : 'processing'}>{review.status}</Tag>
+                                    <StatusTag status={review.status} />
                                 </Descriptions.Item>
                                 <Descriptions.Item label="Manager">{review.manager.name}</Descriptions.Item>
                                 <Descriptions.Item label="Action">

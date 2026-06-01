@@ -42,4 +42,4 @@ const KudosCard = ({ kudos }) => {
   );
 };
 
-export default KudosCard;
+export default React.memo(KudosCard);

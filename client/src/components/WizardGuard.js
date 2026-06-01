@@ -1,6 +1,6 @@
 import React, { useState } from 'react'; // <-- 1. Import useState
 import { useSelector } from 'react-redux';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import WelcomeWizardPage from '../pages/WelcomeWizardPage';
 import { Spin } from 'antd';
 
@@ -9,6 +9,10 @@ const WizardGuard = () => {
 
     // --- 2. THE STATE IS NOW MANAGED HERE, IN THE PARENT ---
     const [wizardStep, setWizardStep] = useState(0);
+
+    if (status === 'failed') {
+        return <Navigate to="/login" replace />;
+    }
 
     if (status === 'loading' || !user) {
         return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>;
