@@ -3,17 +3,23 @@ const Leave = require('../model/leave.model');
 const LeaveBalance = require('../model/leaveBalance.model');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getTeamLeaveRequests = async (managerId) => {
+const getTeamLeaveRequests = async (managerId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
     const teamMembers = await User.find({ manager: managerId }).select('_id').lean();
     const teamMemberIds = teamMembers.map(member => member._id);
-
-    const leaveRequests = await Leave.find({ employee: { $in: teamMemberIds } })
-        .populate('employee', 'name email')
-        .sort({ createdAt: -1 })
-        .lean();
-
-    return leaveRequests;
+    const query = { employee: { $in: teamMemberIds } };
+    const [leaveRequests, total] = await Promise.all([
+        Leave.find(query)
+            .populate('employee', 'name email')
+            .sort({ createdAt: -1 })
+            .lean()
+            .skip(skip)
+            .limit(l),
+        Leave.countDocuments(query)
+    ]);
+    return { data: leaveRequests, pagination: buildPagination(total, p, l) };
 };
 
 const updateLeaveRequestStatus = async (leaveId, { status, managerNotes }, loggedInUser, req) => {

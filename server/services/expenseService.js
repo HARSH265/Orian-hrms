@@ -2,6 +2,7 @@ const Expense = require('../model/expense.model');
 const User = require('../model/user');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const submitExpense = async (data, req) => {
     const { date, category, amount, description, employee } = data;
@@ -20,19 +21,30 @@ const submitExpense = async (data, req) => {
     return expense;
 };
 
-const getMyExpenses = async (userId) => {
-    const expenses = await Expense.find({ employee: userId }).sort({ date: -1 });
-    return expenses;
+const getMyExpenses = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { employee: userId };
+    const [expenses, total] = await Promise.all([
+        Expense.find(query).sort({ date: -1 }).skip(skip).limit(l),
+        Expense.countDocuments(query)
+    ]);
+    return { data: expenses, pagination: buildPagination(total, p, l) };
 };
 
-const getTeamExpenses = async (managerId) => {
+const getTeamExpenses = async (managerId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
     const teamMembers = await User.find({ manager: managerId }).select('_id');
     const teamMemberIds = teamMembers.map(member => member._id);
-
-    const expenses = await Expense.find({ employee: { $in: teamMemberIds } })
-        .populate('employee', 'name email')
-        .sort({ createdAt: -1 });
-    return expenses;
+    const query = { employee: { $in: teamMemberIds } };
+    const [expenses, total] = await Promise.all([
+        Expense.find(query)
+            .populate('employee', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Expense.countDocuments(query)
+    ]);
+    return { data: expenses, pagination: buildPagination(total, p, l) };
 };
 
 const updateExpenseStatus = async (expenseId, status, managerNotes, loggedInUser, req) => {
@@ -72,11 +84,17 @@ const updateExpenseStatus = async (expenseId, status, managerNotes, loggedInUser
     return { data: expense };
 };
 
-const getAllExpenses = async () => {
-    const allExpenses = await Expense.find({})
-        .populate('employee', 'name email')
-        .sort({ createdAt: -1 });
-    return allExpenses;
+const getAllExpenses = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [allExpenses, total] = await Promise.all([
+        Expense.find({})
+            .populate('employee', 'name email')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Expense.countDocuments()
+    ]);
+    return { data: allExpenses, pagination: buildPagination(total, p, l) };
 };
 
 module.exports = {

@@ -1,13 +1,20 @@
 const Job = require('../model/job.model');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getAllJobs = async (userRole) => {
+const getAllJobs = async (userRole, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
     const query = (userRole === 'hr' || userRole === 'super-admin') ? {} : { status: 'Open' };
-    const jobs = await Job.find(query)
-        .populate('department', 'name')
-        .populate('postedBy', 'name')
-        .sort({ createdAt: -1 });
-    return jobs;
+    const [jobs, total] = await Promise.all([
+        Job.find(query)
+            .populate('department', 'name')
+            .populate('postedBy', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Job.countDocuments(query)
+    ]);
+    return { data: jobs, pagination: buildPagination(total, p, l) };
 };
 
 const createJob = async (data) => {

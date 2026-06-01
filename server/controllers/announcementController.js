@@ -5,8 +5,9 @@ const { getPublishedAnnouncements, createAnnouncement, getAnnouncementById, upda
 // @access  Private (All logged-in users)
 exports.getPublishedAnnouncements = async (req, res, next) => {
     try {
-        const announcements = await getPublishedAnnouncements();
-        res.status(200).json({ success: true, count: announcements.length, data: announcements });
+        const { page, limit } = req.query;
+        const result = await getPublishedAnnouncements({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

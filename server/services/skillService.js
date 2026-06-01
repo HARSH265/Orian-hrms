@@ -1,10 +1,15 @@
 const Skill = require('../model/skill.model');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getAllSkills = async (userRole) => {
+const getAllSkills = async (userRole, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
     const query = (userRole === 'hr' || userRole === 'super-admin') ? {} : { isArchived: false };
-    const skills = await Skill.find(query).sort({ category: 1, name: 1 }).lean();
-    return skills;
+    const [skills, total] = await Promise.all([
+        Skill.find(query).sort({ category: 1, name: 1 }).lean().skip(skip).limit(l),
+        Skill.countDocuments(query)
+    ]);
+    return { data: skills, pagination: buildPagination(total, p, l) };
 };
 
 const createSkill = async (skillData, userId) => {

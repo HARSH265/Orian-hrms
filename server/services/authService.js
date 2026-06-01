@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const User = require('../model/user');
 const RefreshToken = require('../model/refreshToken.model');
 const generateTokens = require('../utils/generateToken');
@@ -178,6 +179,76 @@ const disableTwoFactorUser = async (user) => {
     return { success: true, message: '2FA has been disabled.' };
 };
 
+/**
+ * Change password for logged-in user (requires current password)
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+    const user = await User.findById(userId).select('+password');
+    if (!user) throw new Error('User not found');
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+        throw new Error('Current password is incorrect');
+    }
+
+    if (!User.validatePassword(newPassword)) {
+        throw new Error('New password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return { message: 'Password changed successfully' };
+};
+
+/**
+ * Generate password reset token
+ */
+const forgotPassword = async (email) => {
+    const user = await User.findOne({ email });
+    if (!user) {
+        return { message: 'If an account exists, a reset link has been sent.' };
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    user.passwordResetToken = resetTokenHash;
+    user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    logger.info(`[AUTH] Password reset token for ${email}: ${resetToken}`);
+
+    return { message: 'If an account exists, a reset link has been sent.' };
+};
+
+/**
+ * Reset password using token
+ */
+const resetPassword = async (resetToken, newPassword) => {
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    const user = await User.findOne({
+        passwordResetToken: resetTokenHash,
+        passwordResetExpires: { $gt: Date.now() }
+    }).select('+password');
+
+    if (!user) {
+        throw new Error('Invalid or expired reset token');
+    }
+
+    if (!User.validatePassword(newPassword)) {
+        throw new Error('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    }
+
+    user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    return { message: 'Password has been reset successfully' };
+};
+
 module.exports = {
     loginUser,
     refreshTokenUser,
@@ -185,4 +256,7 @@ module.exports = {
     generateTwoFactorSecretUser,
     verifyTwoFactorCodeUser,
     disableTwoFactorUser,
+    changePassword,
+    forgotPassword,
+    resetPassword,
 };

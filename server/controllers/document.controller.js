@@ -37,8 +37,9 @@ exports.uploadDocument = asyncHandler(async (req, res, next) => {
 
 exports.getAllDocuments = asyncHandler(async (req, res, next) => {
     try {
-        const documents = await getAllDocuments();
-        res.status(200).json({ success: true, count: documents.length, data: documents });
+        const { page, limit } = req.query;
+        const result = await getAllDocuments({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }
@@ -46,8 +47,9 @@ exports.getAllDocuments = asyncHandler(async (req, res, next) => {
 
 exports.getMyDocuments = asyncHandler(async (req, res, next) => {
     try {
-        const documents = await getMyDocuments();
-        res.status(200).json({ success: true, count: documents.length, data: documents });
+        const { page, limit } = req.query;
+        const result = await getMyDocuments({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

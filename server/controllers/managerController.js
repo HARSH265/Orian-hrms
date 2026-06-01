@@ -9,8 +9,9 @@ const {
 
 exports.getTeamLeaveRequests = asyncHandler(async (req, res, next) => {
     try {
-        const leaveRequests = await getTeamLeaveRequests(req.user.id);
-        res.status(200).json({ success: true, count: leaveRequests.length, data: leaveRequests });
+        const { page, limit } = req.query;
+        const result = await getTeamLeaveRequests(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

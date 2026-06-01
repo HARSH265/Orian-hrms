@@ -4,6 +4,7 @@ const LeavePolicy = require('../model/leavePolicy.model');
 const LeaveBalance = require('../model/leaveBalance.model');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const applyForLeave = async (employee, { startDate, endDate, reason, leavePolicyId, attachments }, req) => {
     const policy = await LeavePolicy.findById(leavePolicyId).lean();
@@ -77,13 +78,20 @@ const applyForLeave = async (employee, { startDate, endDate, reason, leavePolicy
     return leaveRequest;
 };
 
-const getMyLeaveHistory = async (employeeId) => {
-    const leaveHistory = await Leave.find({ employee: employeeId })
-        .populate('leavePolicy', 'name')
-        .populate('approvedBy', 'name')
-        .sort({ createdAt: -1 })
-        .lean();
-    return leaveHistory;
+const getMyLeaveHistory = async (employeeId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { employee: employeeId };
+    const [leaveHistory, total] = await Promise.all([
+        Leave.find(query)
+            .populate('leavePolicy', 'name')
+            .populate('approvedBy', 'name')
+            .sort({ createdAt: -1 })
+            .lean()
+            .skip(skip)
+            .limit(l),
+        Leave.countDocuments(query)
+    ]);
+    return { data: leaveHistory, pagination: buildPagination(total, p, l) };
 };
 
 const withdrawLeaveRequest = async (leaveId, employee, req) => {

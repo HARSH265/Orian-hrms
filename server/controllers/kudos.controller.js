@@ -16,8 +16,9 @@ exports.createKudos = asyncHandler(async (req, res, next) => {
 
 exports.getAllKudos = asyncHandler(async (req, res, next) => {
     try {
-        const kudos = await getAllKudos();
-        res.status(200).json({ success: true, count: kudos.length, data: kudos });
+        const { page, limit } = req.query;
+        const result = await getAllKudos({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }
@@ -25,8 +26,9 @@ exports.getAllKudos = asyncHandler(async (req, res, next) => {
 
 exports.getUserKudos = asyncHandler(async (req, res, next) => {
     try {
-        const kudos = await getUserKudos(req.params.userId);
-        res.status(200).json({ success: true, count: kudos.length, data: kudos });
+        const { page, limit } = req.query;
+        const result = await getUserKudos(req.params.userId, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

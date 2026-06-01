@@ -19,8 +19,9 @@ exports.createSurvey = asyncHandler(async (req, res, next) => {
 
 exports.getAllSurveys = asyncHandler(async (req, res, next) => {
     try {
-        const surveys = await getAllSurveys();
-        res.status(200).json({ success: true, count: surveys.length, data: surveys });
+        const { page, limit } = req.query;
+        const result = await getAllSurveys({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 });
 
@@ -39,8 +40,9 @@ exports.getSurveyById = asyncHandler(async (req, res, next) => {
 
 exports.getMyAssignedSurveys = asyncHandler(async (req, res, next) => {
     try {
-        const pendingSurveys = await getMyAssignedSurveys(req.user._id);
-        res.status(200).json({ success: true, count: pendingSurveys.length, data: pendingSurveys });
+        const { page, limit } = req.query;
+        const result = await getMyAssignedSurveys(req.user._id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 });
 

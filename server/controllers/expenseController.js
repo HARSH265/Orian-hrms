@@ -22,8 +22,9 @@ exports.submitExpense = asyncHandler(async (req, res, next) => {
 
 exports.getMyExpenses = asyncHandler(async (req, res, next) => {
     try {
-        const expenses = await getMyExpenses(req.user.id);
-        res.status(200).json({ success: true, count: expenses.length, data: expenses });
+        const { page, limit } = req.query;
+        const result = await getMyExpenses(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }
@@ -31,8 +32,9 @@ exports.getMyExpenses = asyncHandler(async (req, res, next) => {
 
 exports.getTeamExpenses = asyncHandler(async (req, res, next) => {
     try {
-        const expenses = await getTeamExpenses(req.user.id);
-        res.status(200).json({ success: true, count: expenses.length, data: expenses });
+        const { page, limit } = req.query;
+        const result = await getTeamExpenses(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }
@@ -57,8 +59,9 @@ exports.updateExpenseStatus = asyncHandler(async (req, res, next) => {
 
 exports.getAllExpenses = asyncHandler(async (req, res, next) => {
     try {
-        const allExpenses = await getAllExpenses();
-        res.status(200).json({ success: true, count: allExpenses.length, data: allExpenses });
+        const { page, limit } = req.query;
+        const result = await getAllExpenses({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

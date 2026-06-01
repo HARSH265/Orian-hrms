@@ -1,23 +1,34 @@
 const Document = require('../model/Document');
 const cloudinary = require('../config/cloudinary');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const uploadDocument = async (data) => {
     const document = await Document.create(data);
     return document;
 };
 
-const getAllDocuments = async () => {
-    const documents = await Document.find()
-        .populate('uploadedBy', 'name')
-        .populate('acknowledgedBy.user', 'name')
-        .sort({ createdAt: -1 });
-    return documents;
+const getAllDocuments = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [documents, total] = await Promise.all([
+        Document.find()
+            .populate('uploadedBy', 'name')
+            .populate('acknowledgedBy.user', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Document.countDocuments()
+    ]);
+    return { data: documents, pagination: buildPagination(total, p, l) };
 };
 
-const getMyDocuments = async () => {
-    const documents = await Document.find({ isActive: true }).sort({ createdAt: -1 });
-    return documents;
+const getMyDocuments = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [documents, total] = await Promise.all([
+        Document.find({ isActive: true }).sort({ createdAt: -1 }).skip(skip).limit(l),
+        Document.countDocuments({ isActive: true })
+    ]);
+    return { data: documents, pagination: buildPagination(total, p, l) };
 };
 
 const getDocumentById = async (id) => {

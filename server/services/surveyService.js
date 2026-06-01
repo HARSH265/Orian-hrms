@@ -3,6 +3,7 @@ const SurveyResponse = require('../model/SurveyResponse');
 const User = require('../model/user');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const createSurvey = async (surveyData, userId, req) => {
     const { title, description, isAnonymous, recipients, questions } = surveyData;
@@ -22,9 +23,13 @@ const createSurvey = async (surveyData, userId, req) => {
     return survey;
 };
 
-const getAllSurveys = async () => {
-    const surveys = await Survey.find().populate('creator', 'name').sort({ createdAt: -1 }).lean();
-    return surveys;
+const getAllSurveys = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [surveys, total] = await Promise.all([
+        Survey.find().populate('creator', 'name').sort({ createdAt: -1 }).lean().skip(skip).limit(l),
+        Survey.countDocuments()
+    ]);
+    return { data: surveys, pagination: buildPagination(total, p, l) };
 };
 
 const getSurveyById = async (id, userId, userRole) => {
@@ -41,12 +46,17 @@ const getSurveyById = async (id, userId, userRole) => {
     return { survey };
 };
 
-const getMyAssignedSurveys = async (userId) => {
-    const assignedSurveys = await Survey.find({ recipients: userId, status: 'active' }).sort({ createdAt: -1 }).lean();
+const getMyAssignedSurveys = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { recipients: userId, status: 'active' };
+    const [assignedSurveys, total] = await Promise.all([
+        Survey.find(query).sort({ createdAt: -1 }).lean().skip(skip).limit(l),
+        Survey.countDocuments(query)
+    ]);
     const userResponses = await SurveyResponse.find({ respondent: userId }).select('survey').lean();
     const respondedSurveyIds = userResponses.map(response => response.survey.toString());
     const pendingSurveys = assignedSurveys.filter(survey => !respondedSurveyIds.includes(survey._id.toString()));
-    return pendingSurveys;
+    return { data: pendingSurveys, pagination: buildPagination(total, p, l) };
 };
 
 const submitResponse = async (surveyId, answers, user) => {

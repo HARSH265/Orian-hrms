@@ -1,11 +1,18 @@
 const Announcement = require('../model/announcement.model');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getPublishedAnnouncements = async () => {
-    const announcements = await Announcement.find({ status: 'Published' })
-        .populate('author', 'name')
-        .sort({ createdAt: -1 });
-    return announcements;
+const getPublishedAnnouncements = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [announcements, total] = await Promise.all([
+        Announcement.find({ status: 'Published' })
+            .populate('author', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Announcement.countDocuments({ status: 'Published' })
+    ]);
+    return { data: announcements, pagination: buildPagination(total, p, l) };
 };
 
 const createAnnouncement = async (data) => {

@@ -39,15 +39,17 @@ exports.initiateReviewCycle = asyncHandler(async (req, res, next) => {
 
 exports.getMyReviews = asyncHandler(async (req, res, next) => {
     try {
-        const reviews = await getMyReviews(req.user.id);
-        res.status(200).json({ success: true, data: reviews });
+        const { page, limit } = req.query;
+        const result = await getMyReviews(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 });
 
 exports.getTeamReviews = asyncHandler(async (req, res, next) => {
     try {
-        const reviews = await getTeamReviews(req.user.id);
-        res.status(200).json({ success: true, data: reviews });
+        const { page, limit } = req.query;
+        const result = await getTeamReviews(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 });
 

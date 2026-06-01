@@ -25,8 +25,9 @@ exports.applyForLeave = asyncHandler(async (req, res, next) => {
 
 exports.getMyLeaveHistory = asyncHandler(async (req, res, next) => {
     try {
-        const leaveHistory = await getMyLeaveHistory(req.user.id);
-        res.status(200).json({ success: true, count: leaveHistory.length, data: leaveHistory });
+        const { page, limit } = req.query;
+        const result = await getMyLeaveHistory(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

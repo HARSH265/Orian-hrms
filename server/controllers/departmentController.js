@@ -12,8 +12,9 @@ exports.createDepartment = async (req, res, next) => {
 
 exports.getAllDepartments = async (req, res, next) => {
     try {
-        const departments = await getAllDepartments();
-        res.status(200).json({ success: true, count: departments.length, data: departments });
+        const { page, limit } = req.query;
+        const result = await getAllDepartments({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

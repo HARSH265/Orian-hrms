@@ -1,6 +1,7 @@
 const Review = require('../model/review.model');
 const User = require('../model/user');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const initiateReviewCycle = async (cycleName, employeeIds) => {
     const employees = await User.find({ '_id': { $in: employeeIds }, isActive: true });
@@ -29,20 +30,34 @@ const initiateReviewCycle = async (cycleName, employeeIds) => {
     return reviewsToCreate;
 };
 
-const getMyReviews = async (userId) => {
-    const reviews = await Review.find({ employee: userId })
-        .populate('manager', 'name')
-        .sort({ createdAt: -1 })
-        .lean();
-    return reviews;
+const getMyReviews = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { employee: userId };
+    const [reviews, total] = await Promise.all([
+        Review.find(query)
+            .populate('manager', 'name')
+            .sort({ createdAt: -1 })
+            .lean()
+            .skip(skip)
+            .limit(l),
+        Review.countDocuments(query)
+    ]);
+    return { data: reviews, pagination: buildPagination(total, p, l) };
 };
 
-const getTeamReviews = async (userId) => {
-    const reviews = await Review.find({ manager: userId })
-        .populate('employee', 'name')
-        .sort({ createdAt: -1 })
-        .lean();
-    return reviews;
+const getTeamReviews = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { manager: userId };
+    const [reviews, total] = await Promise.all([
+        Review.find(query)
+            .populate('employee', 'name')
+            .sort({ createdAt: -1 })
+            .lean()
+            .skip(skip)
+            .limit(l),
+        Review.countDocuments(query)
+    ]);
+    return { data: reviews, pagination: buildPagination(total, p, l) };
 };
 
 const submitSelfAssessment = async (reviewId, userId, selfAssessment) => {

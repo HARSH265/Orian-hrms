@@ -1,11 +1,19 @@
 const LeavePolicy = require('../model/leavePolicy.model');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getAllLeavePolicies = async () => {
-    const policies = await LeavePolicy.find({ isArchived: false })
-        .sort({ name: 1 })
-        .lean();
-    return policies;
+const getAllLeavePolicies = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { isArchived: false };
+    const [policies, total] = await Promise.all([
+        LeavePolicy.find(query)
+            .sort({ name: 1 })
+            .lean()
+            .skip(skip)
+            .limit(l),
+        LeavePolicy.countDocuments(query)
+    ]);
+    return { data: policies, pagination: buildPagination(total, p, l) };
 };
 
 const createLeavePolicy = async (policyData) => {

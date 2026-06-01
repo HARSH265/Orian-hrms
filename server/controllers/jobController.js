@@ -2,8 +2,9 @@ const { getAllJobs, createJob, updateJob, deleteJob } = require('../services/job
 
 exports.getAllJobs = async (req, res, next) => {
     try {
-        const jobs = await getAllJobs(req.user.role);
-        res.status(200).json({ success: true, count: jobs.length, data: jobs });
+        const { page, limit } = req.query;
+        const result = await getAllJobs(req.user.role, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 };
 

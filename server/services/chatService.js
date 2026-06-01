@@ -1,12 +1,20 @@
 const Conversation = require('../model/conversationModel');
 const Message = require('../model/messageModel');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
-const getConversationsForUser = async (userId) => {
-    const conversations = await Conversation.find({ participants: userId })
-        .populate({ path: 'participants', select: 'name profilePictureUrl role' })
-        .populate({ path: 'lastMessage.sender', select: 'name' })
-        .sort({ updatedAt: -1 });
+const getConversationsForUser = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { participants: userId };
+    const [conversations, total] = await Promise.all([
+        Conversation.find(query)
+            .populate({ path: 'participants', select: 'name profilePictureUrl role' })
+            .populate({ path: 'lastMessage.sender', select: 'name' })
+            .sort({ updatedAt: -1 })
+            .skip(skip)
+            .limit(l),
+        Conversation.countDocuments(query)
+    ]);
 
     const conversationIds = conversations.map(c => c._id);
 
@@ -16,7 +24,7 @@ const getConversationsForUser = async (userId) => {
         sender: { $ne: userId }
     });
 
-    return { conversations, unreadCount };
+    return { data: conversations, unreadCount, pagination: buildPagination(total, p, l) };
 };
 
 const getConversationById = async (conversationId, userId) => {
@@ -27,11 +35,18 @@ const getConversationById = async (conversationId, userId) => {
     return conversation;
 };
 
-const getMessagesForConversation = async (conversationId) => {
-    const messages = await Message.find({ conversationId })
-        .populate('sender', 'name profilePictureUrl')
-        .sort({ createdAt: 'asc' });
-    return messages;
+const getMessagesForConversation = async (conversationId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { conversationId };
+    const [messages, total] = await Promise.all([
+        Message.find(query)
+            .populate('sender', 'name profilePictureUrl')
+            .sort({ createdAt: 'asc' })
+            .skip(skip)
+            .limit(l),
+        Message.countDocuments(query)
+    ]);
+    return { data: messages, pagination: buildPagination(total, p, l) };
 };
 
 const findOrCreateConversation = async (userId, recipientId) => {

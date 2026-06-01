@@ -8,8 +8,9 @@ const {
 
 exports.getAllLeavePolicies = asyncHandler(async (req, res, next) => {
     try {
-        const policies = await getAllLeavePolicies();
-        res.status(200).json({ success: true, data: policies });
+        const { page, limit } = req.query;
+        const result = await getAllLeavePolicies({ page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

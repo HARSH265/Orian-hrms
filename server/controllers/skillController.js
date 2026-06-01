@@ -2,8 +2,9 @@ const { getAllSkills, createSkill, updateSkill, archiveSkill } = require('../ser
 
 exports.getAllSkills = async (req, res, next) => {
     try {
-        const skills = await getAllSkills(req.user.role);
-        res.status(200).json({ success: true, data: skills });
+        const { page, limit } = req.query;
+        const result = await getAllSkills(req.user.role, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) { next(error); }
 };
 

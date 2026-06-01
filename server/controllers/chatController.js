@@ -6,8 +6,9 @@ const asyncHandler = require('../utils/asyncHandler');
 // @access  Private
 exports.getConversationsForUser = asyncHandler(async (req, res, next) => {
     try {
-        const data = await getConversationsForUser(req.user.id);
-        res.status(200).json({ success: true, data });
+        const { page, limit } = req.query;
+        const result = await getConversationsForUser(req.user.id, { page, limit });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }
@@ -19,6 +20,7 @@ exports.getConversationsForUser = asyncHandler(async (req, res, next) => {
 exports.getMessagesForConversation = asyncHandler(async (req, res, next) => {
     try {
         const { conversationId } = req.params;
+        const { page, limit } = req.query;
 
         const conversation = await getConversationById(conversationId, req.user.id);
 
@@ -26,9 +28,9 @@ exports.getMessagesForConversation = asyncHandler(async (req, res, next) => {
             return res.status(403).json({ success: false, message: 'Not authorized to access this conversation' });
         }
 
-        const messages = await getMessagesForConversation(conversationId);
+        const result = await getMessagesForConversation(conversationId, { page, limit });
 
-        res.status(200).json({ success: true, data: messages });
+        res.status(200).json({ success: true, ...result });
     } catch (error) {
         next(error);
     }

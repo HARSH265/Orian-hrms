@@ -1,16 +1,23 @@
 const Department = require('../model/department.model');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const createDepartment = async (name, description) => {
     const department = await Department.create({ name, description });
     return department;
 };
 
-const getAllDepartments = async () => {
-    const departments = await Department.find({})
-        .populate('manager', 'name')
-        .sort({ name: 1 });
-    return departments;
+const getAllDepartments = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const [departments, total] = await Promise.all([
+        Department.find({})
+            .populate('manager', 'name')
+            .sort({ name: 1 })
+            .skip(skip)
+            .limit(l),
+        Department.countDocuments()
+    ]);
+    return { data: departments, pagination: buildPagination(total, p, l) };
 };
 
 const updateDepartment = async (id, body) => {

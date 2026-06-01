@@ -2,6 +2,7 @@ const Kudos = require('../model/Kudos');
 const User = require('../model/user');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
+const { parsePagination, buildPagination } = require('../utils/pagination');
 
 const createKudos = async (sender, recipientId, message, companyValue, req) => {
     if (!recipientId || !message) {
@@ -33,20 +34,32 @@ const createKudos = async (sender, recipientId, message, companyValue, req) => {
     return { data: newKudos };
 };
 
-const getAllKudos = async () => {
-    const kudos = await Kudos.find()
-        .sort({ createdAt: -1 })
-        .limit(50)
-        .populate('sender', 'name profilePictureUrl')
-        .populate('recipient', 'name profilePictureUrl');
-    return kudos;
+const getAllKudos = async ({ page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit }, { limit: 50 });
+    const [kudos, total] = await Promise.all([
+        Kudos.find()
+            .sort({ createdAt: -1 })
+            .populate('sender', 'name profilePictureUrl')
+            .populate('recipient', 'name profilePictureUrl')
+            .skip(skip)
+            .limit(l),
+        Kudos.countDocuments()
+    ]);
+    return { data: kudos, pagination: buildPagination(total, p, l) };
 };
 
-const getUserKudos = async (userId) => {
-    const kudos = await Kudos.find({ recipient: userId })
-        .sort({ createdAt: -1 })
-        .populate('sender', 'name profilePictureUrl');
-    return kudos;
+const getUserKudos = async (userId, { page, limit } = {}) => {
+    const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = { recipient: userId };
+    const [kudos, total] = await Promise.all([
+        Kudos.find(query)
+            .sort({ createdAt: -1 })
+            .populate('sender', 'name profilePictureUrl')
+            .skip(skip)
+            .limit(l),
+        Kudos.countDocuments(query)
+    ]);
+    return { data: kudos, pagination: buildPagination(total, p, l) };
 };
 
 module.exports = {

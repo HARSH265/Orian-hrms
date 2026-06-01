@@ -98,7 +98,9 @@ const UserSchema = new mongoose.Schema({
         isEnabled: { type: Boolean, default: false }
     },
 
-    
+    passwordResetToken: { type: String, select: false },
+    passwordResetExpires: { type: Date, select: false },
+
     isActive: { type: Boolean, default: true }, 
 
 }, { timestamps: true });
