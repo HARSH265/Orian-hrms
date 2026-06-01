@@ -5,6 +5,15 @@ const logger = require('../utils/logger');
 const initiateReviewCycle = async (cycleName, employeeIds) => {
     const employees = await User.find({ '_id': { $in: employeeIds }, isActive: true });
 
+    // Check for existing cycles with same name for these employees
+    const existingReviews = await Review.find({
+        employee: { $in: employeeIds },
+        cycleName: cycleName
+    });
+    if (existingReviews.length > 0) {
+        throw new Error(`A review cycle named "${cycleName}" already exists for some employees.`);
+    }
+
     const reviewsToCreate = [];
     for (const employee of employees) {
         if (employee.manager) {
@@ -42,6 +51,11 @@ const submitSelfAssessment = async (reviewId, userId, selfAssessment) => {
     if (review.employee.toString() !== userId.toString()) return { error: 'unauthorized' };
     if (review.status !== 'Pending Self-Assessment') return { error: 'invalid_status' };
 
+    // Validate required fields
+    if (!selfAssessment.strengths || !selfAssessment.areasForImprovement || !selfAssessment.feedback) {
+        throw new Error('All fields are required: strengths, areasForImprovement, feedback');
+    }
+
     review.selfAssessment = selfAssessment;
     review.employeeSubmitDate = new Date();
     review.status = 'Pending Manager Review';
@@ -54,6 +68,11 @@ const submitManagerReview = async (reviewId, userId, managerReview) => {
     if (!review) return { error: 'not_found' };
     if (review.manager.toString() !== userId.toString()) return { error: 'unauthorized' };
     if (review.status !== 'Pending Manager Review') return { error: 'invalid_status' };
+
+    // Validate required fields
+    if (!managerReview.overallPerformance || !managerReview.goalsForNextCycle || !managerReview.managerFeedback) {
+        throw new Error('All fields are required: overallPerformance, goalsForNextCycle, managerFeedback');
+    }
 
     review.managerReview = managerReview;
     review.managerSubmitDate = new Date();

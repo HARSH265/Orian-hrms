@@ -46,4 +46,7 @@ const ReviewSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+ReviewSchema.index({ employee: 1, createdAt: -1 });
+ReviewSchema.index({ manager: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Review', ReviewSchema);

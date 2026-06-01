@@ -50,6 +50,11 @@ const updateExpenseStatus = async (expenseId, status, managerNotes, loggedInUser
         return { error: 'Not authorized to update this claim.', status: 403 };
     }
 
+    // Prevent self-approval
+    if (expense.employee.toString() === loggedInUser.id.toString()) {
+        throw new Error('Cannot approve or deny your own expense.');
+    }
+
     expense.status = status;
     if (managerNotes) {
         expense.managerNotes = managerNotes;

@@ -18,6 +18,7 @@ const ExpenseSchema = new mongoose.Schema({
     amount: {
         type: Number,
         required: [true, 'Please enter the expense amount'],
+        min: [0, 'Amount must be positive'],
     },
     description: {
         type: String,
@@ -36,5 +37,8 @@ const ExpenseSchema = new mongoose.Schema({
         trim: true,
     }
 }, { timestamps: true });
+
+ExpenseSchema.index({ employee: 1, date: -1 });
+ExpenseSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Expense', ExpenseSchema);
