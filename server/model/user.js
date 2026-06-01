@@ -93,6 +93,11 @@ isActive: { type: Boolean, default: true },
 
 }, { timestamps: true });
 
+// Indexes for frequent queries
+UserSchema.index({ systemRole: 1 });
+UserSchema.index({ department: 1 });
+UserSchema.index({ manager: 1 });
+
 // Attach encryption plugin for 2FA secrets
 if (process.env.ENCRYPTION_SECRET_KEY) {
     UserSchema.plugin(encryptionPlugin, {
