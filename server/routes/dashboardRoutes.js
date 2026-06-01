@@ -1,12 +1,19 @@
+// In: server/routes/dashboardRoutes.js
+
 const express = require('express');
-const { getDataHealth } = require('../controllers/dashboardController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { getDataHealth, getTaskMetrics, getLeaveMetrics } = require('../controllers/dashboardController'); // <-- IMPORT NEW
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// All dashboard routes are for admins only
-router.use(protect, authorize('hr', 'super-admin'));
+router.use(protect);
 
-router.get('/data-health', getDataHealth);
+// --- Data Health Route (HR/Admin only) ---
+router.get('/data-health', checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getDataHealth);
+
+// --- Analytics Routes (Manager, HR, Admin) ---
+router.get('/task-metrics', checkPermissions(PERMISSIONS.CREATE_TASKS), getTaskMetrics);
+router.get('/leave-metrics', checkPermissions(PERMISSIONS.VIEW_TEAM_LEAVE), getLeaveMetrics); // <-- ADD NEW ROUTE
 
 module.exports = router;
