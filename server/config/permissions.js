@@ -46,7 +46,10 @@ const PERMISSIONS = {
 
     // ======== SETTINGS (SUPER-ADMIN) ========
     MANAGE_SYSTEM_SETTINGS: 'manage_system_settings',
-    MANAGE_CUSTOM_FIELDS: 'manage_custom_fields'
+    MANAGE_CUSTOM_FIELDS: 'manage_custom_fields',
+    // ======== DOCUMENT MANAGEMENT (ADMIN) ========
+    VIEW_DOCUMENTS: 'view_documents',
+    MANAGE_DOCUMENTS: 'manage_documents'
 };
 
 // We will no longer use a hardcoded map. Instead, we will seed the database
@@ -83,9 +86,6 @@ module.exports = {
         ],
         "super-admin": SUPER_ADMIN_PERMISSIONS,
     },
-    PERMISSIONS,
-    SUPER_ADMIN_PERMISSIONS,
-};
     PERMISSIONS,
     SUPER_ADMIN_PERMISSIONS,
 };
