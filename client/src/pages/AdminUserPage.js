@@ -9,7 +9,7 @@ import { fetchLeavePolicies, assignPolicyToEmployee } from '../features/leave-po
 import { fetchRoles } from '../features/roles/roleThunks';
 import SensitiveDataForm from '../components/admin/SensitiveDataForm';
 import UserChecklistProgress from '../components/admin/UserChecklistProgress';
-import moment from 'moment';
+import dayjs from 'dayjs';
 import debounce from 'lodash.debounce';
 
 const { Title, Text } = Typography;
@@ -94,8 +94,8 @@ const AdminUserPage = () => {
                 ...user,
                 department: user.department?._id,
                 manager: user.manager?._id,
-                'employmentInfo.hireDate': user.employmentInfo?.hireDate ? moment(user.employmentInfo.hireDate) : null,
-                'personalInfo.dateOfBirth': user.personalInfo?.dateOfBirth ? moment(user.personalInfo.dateOfBirth) : null,
+                'employmentInfo.hireDate': user.employmentInfo?.hireDate ? dayjs(user.employmentInfo.hireDate) : null,
+                'personalInfo.dateOfBirth': user.personalInfo?.dateOfBirth ? dayjs(user.personalInfo.dateOfBirth) : null,
                 roles: user.roles?.map(role => role._id) || [],
                 role: user.systemRole
             });

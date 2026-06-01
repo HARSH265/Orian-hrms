@@ -7,7 +7,7 @@ import { fetchAllSurveys, closeSurvey } from '../features/survey/surveyThunks';
 import { fetchAllUsers } from '../features/admin/adminThunks';
 import SurveyBuilder from '../components/survey/SurveyBuilder';
 import EditSurveyModal from '../components/survey/EditSurveyModal';
-import { format } from 'date-fns/format';
+import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
 
 const { Title } = Typography;
@@ -48,7 +48,7 @@ const AdminSurveysPage = () => {
             render: status => <StatusTag status={status} />,
         },
         { title: 'Recipients', dataIndex: 'recipients', key: 'recipients', render: r => r.length },
-        { title: 'Created', dataIndex: 'createdAt', key: 'createdAt', render: date => format(new Date(date), 'MMM d, yyyy') },
+        { title: 'Created', dataIndex: 'createdAt', key: 'createdAt', render: date => dayjs(date).format('MMM D, YYYY') },
         {
             title: 'Actions',
             key: 'actions',

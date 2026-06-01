@@ -12,7 +12,7 @@ import { fetchUserKudos } from '../features/kudos/kudosThunks';
 import KudosCard from '../components/kudos/KudosCard';
 import TwoFactorAuthManager from '../components/profile/TwoFactorAuthManager';
 import ProfileCompleteness from '../components/profile/ProfileCompleteness';
-import moment from 'moment'; 
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -40,7 +40,7 @@ const ProfilePage = () => {
                 address: user.address, 
                 personalInfo: {
                     ...user.personalInfo,
-                    dateOfBirth: user.personalInfo?.dateOfBirth ? moment(user.personalInfo.dateOfBirth) : null
+                    dateOfBirth: user.personalInfo?.dateOfBirth ? dayjs(user.personalInfo.dateOfBirth) : null
                 },
                 // Set nested fields for emergency contact
                 emergencyContact: user.emergencyContact

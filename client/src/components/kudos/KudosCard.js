@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Avatar, Typography, Tag, Tooltip } from 'antd';
 import { UserOutlined, ArrowRightOutlined } from '@ant-design/icons';
 // --- THIS IS THE FIX ---
-import { format } from 'date-fns/format'; 
+import dayjs from 'dayjs';
 
 const { Text, Paragraph } = Typography;
 
@@ -26,7 +26,7 @@ const KudosCard = ({ kudos }) => {
           <Text strong style={{ marginLeft: 12 }}>{recipient.name}</Text>
         </div>
         <Text type="secondary" style={{ fontSize: '12px' }}>
-          {format(new Date(createdAt), 'MMM d, yyyy')}
+          {dayjs(createdAt).format('MMM D, YYYY')}
         </Text>
       </div>
 

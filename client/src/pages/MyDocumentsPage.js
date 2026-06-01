@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { List, Card, Typography, Spin, Button, message, Tag, Empty, Tooltip } from 'antd';
 import { CheckCircleOutlined, DownloadOutlined, FileTextOutlined } from '@ant-design/icons';
 import { fetchMyDocuments, acknowledgeDocument } from '../features/document/documentThunks';
-import { format } from 'date-fns/format';
+import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -70,7 +70,7 @@ const MyDocumentsPage = () => {
                                 />
                                 <div style={{ marginTop: 16, fontSize: '12px', color: '#888' }}>
                                     <Text type="secondary">Category: {doc.category}</Text><br/>
-                                    <Text type="secondary">Last Updated: {format(new Date(doc.updatedAt), 'MMM d, yyyy')}</Text>
+                                    <Text type="secondary">Last Updated: {dayjs(doc.updatedAt).format('MMM D, YYYY')}</Text>
                                 </div>
                             </Card>
                         </List.Item>

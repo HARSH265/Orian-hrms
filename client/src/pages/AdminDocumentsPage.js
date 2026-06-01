@@ -4,7 +4,7 @@ import { Button, Table, Typography, Tag, Space, Popconfirm, message, Tooltip } f
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { fetchAllDocuments, softDeleteDocument } from '../features/document/documentThunks';
 import UploadDocumentModal from '../components/document/UploadDocumentModal';
-import { format } from 'date-fns/format';
+import dayjs from 'dayjs';
 
 const { Title } = Typography;
 
@@ -51,7 +51,7 @@ const AdminDocumentsPage = () => {
             render: (_, record) => `${record.acknowledgedBy.length} user(s)`
         },
         { title: 'Uploaded By', dataIndex: ['uploadedBy', 'name'], key: 'uploadedBy' },
-        { title: 'Date Uploaded', dataIndex: 'createdAt', key: 'createdAt', render: date => format(new Date(date), 'MMM d, yyyy') },
+        { title: 'Date Uploaded', dataIndex: 'createdAt', key: 'createdAt', render: date => dayjs(date).format('MMM D, YYYY') },
         {
             title: 'Actions',
             key: 'actions',

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { List, Card, Typography, Spin, Button, Empty } from 'antd';
 import { Link } from 'react-router-dom';
 import { fetchMyAssignedSurveys } from '../features/survey/surveyThunks';
-import { format } from 'date-fns/format';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -38,7 +38,7 @@ const MySurveysPage = () => {
                                     </Link>
                                 ]}
                             >
-                                <Text>Created on: {format(new Date(survey.createdAt), 'MMM d, yyyy')}</Text>
+                                <Text>Created on: {dayjs(survey.createdAt).format('MMM D, YYYY')}</Text>
                             </Card>
                         </List.Item>
                     )}
