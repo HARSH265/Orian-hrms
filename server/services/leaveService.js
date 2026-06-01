@@ -17,6 +17,26 @@ const applyForLeave = async (employee, { startDate, endDate, reason, leavePolicy
 
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    // Prevent past-date leave requests
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    if (start < today) {
+        throw new Error('Cannot request leave for past dates.');
+    }
+
+    // Check for overlapping leave requests
+    const overlappingLeave = await Leave.findOne({
+        employee: employee.id,
+        status: { $in: ['Pending', 'Approved'] },
+        $or: [
+            { startDate: { $lte: end }, endDate: { $gte: start } }
+        ]
+    });
+    if (overlappingLeave) {
+        throw new Error('You already have a leave request for these dates.');
+    }
+
     const requestedDays = (end - start) / (1000 * 60 * 60 * 24) + 1;
 
     const currentYear = start.getFullYear();

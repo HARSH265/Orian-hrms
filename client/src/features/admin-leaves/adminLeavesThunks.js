@@ -25,11 +25,10 @@ export const fetchAllSystemLeaves = createAsyncThunk(
  */
 export const adminUpdateLeaveStatus = createAsyncThunk(
   'adminLeaves/updateStatus',
-  async ({ leaveId, status }, { dispatch, rejectWithValue }) => {
+  async ({ leaveId, status, managerNotes }, { dispatch, rejectWithValue }) => {
     try {
-      // We reuse the manager's endpoint because our backend logic now allows admins.
-      const { data } = await api.put(`/manager/leave-requests/${leaveId}`, { status });
-      dispatch(fetchAllSystemLeaves()); // Refresh the list after the action.
+      const { data } = await api.put(`/manager/leave-request/${leaveId}`, { status, managerNotes });
+      dispatch(fetchAllSystemLeaves());
       return data.data;
     } catch (error) {
       const message = (error.response?.data?.message) || 'Failed to update status';

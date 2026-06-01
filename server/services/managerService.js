@@ -29,6 +29,11 @@ const updateLeaveRequestStatus = async (leaveId, { status, managerNotes }, logge
 
     const employee = await User.findById(leaveRequest.employee).lean();
 
+    // Prevent self-approval
+    if (leaveRequest.employee.toString() === loggedInUser.id.toString()) {
+        throw new Error('UNAUTHORIZED');
+    }
+
     const isDirectManager = employee.manager && (employee.manager.toString() === loggedInUser.id.toString());
     const isAdmin = ['hr', 'super-admin'].includes(loggedInUser.role);
 
@@ -42,10 +47,19 @@ const updateLeaveRequestStatus = async (leaveId, { status, managerNotes }, logge
     const previousStatus = leaveRequest.status;
 
     if (status === 'Approved' && previousStatus !== 'Approved') {
-        await LeaveBalance.updateOne(
-            { employee: leaveRequest.employee, leavePolicy: leaveRequest.leavePolicy, year: start.getFullYear() },
-            { $inc: { daysTaken: daysToUpdate } }
+        const result = await LeaveBalance.findOneAndUpdate(
+            { 
+                employee: leaveRequest.employee, 
+                leavePolicy: leaveRequest.leavePolicy, 
+                year: start.getFullYear(),
+                $expr: { $gte: [{ $subtract: ['$totalDays', '$daysTaken'] }, daysToUpdate] }
+            },
+            { $inc: { daysTaken: daysToUpdate } },
+            { new: true }
         );
+        if (!result) {
+            throw new Error('Insufficient leave balance to approve this request.');
+        }
     }
 
     if (status === 'Denied' && previousStatus === 'Approved') {
