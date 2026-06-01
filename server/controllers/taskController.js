@@ -456,6 +456,27 @@ exports.updateTaskDependencies = async (req, res, next) => {
              return res.status(403).json({ success: false, message: 'Not authorized to manage dependencies for this task.' });
         }
 
+        // Check for circular dependencies
+        const hasCycle = async (taskId, dependsOnIds) => {
+            const visited = new Set();
+            const queue = [...dependsOnIds.map(id => id.toString())];
+            while (queue.length > 0) {
+                const current = queue.shift();
+                if (current === taskId.toString()) return true;
+                if (visited.has(current)) continue;
+                visited.add(current);
+                const depTask = await Task.findById(current).select('dependsOn').lean();
+                if (depTask && depTask.dependsOn) {
+                    queue.push(...depTask.dependsOn.map(id => id.toString()));
+                }
+            }
+            return false;
+        };
+
+        if (await hasCycle(currentTask._id, newDependencyIds)) {
+            return res.status(400).json({ success: false, message: 'Adding these dependencies would create a circular dependency.' });
+        }
+
         const oldDependencyIds = currentTask.dependsOn.map(id => id.toString());
         
         // --- Transaction: This ensures all DB updates succeed or none do ---
@@ -505,6 +526,14 @@ exports.logTimeToTask = async (req, res, next) => {
         const { timeSpent, date, notes } = req.body;
         if (!timeSpent || !date) {
             return res.status(400).json({ success: false, message: 'Time spent and date are required.' });
+        }
+
+        // Validate time value
+        if (!timeSpent || timeSpent <= 0 || timeSpent > 24) {
+            return res.status(400).json({ success: false, message: 'Time spent must be between 0 and 24 hours.' });
+        }
+        if (date && new Date(date) > new Date()) {
+            return res.status(400).json({ success: false, message: 'Cannot log time for future dates.' });
         }
         
         const task = await Task.findById(req.params.id);

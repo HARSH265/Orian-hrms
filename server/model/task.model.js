@@ -35,7 +35,7 @@ const TimeLogSchema = new mongoose.Schema({
 const TaskSchema = new mongoose.Schema({
     title: { type: String, required: [true, 'Please add a task title'], trim: true },
     description: { type: String, trim: true },
-    status: { type: String, enum: ['To Do', 'In Progress', 'Done','blocked'], default: 'To Do' },
+    status: { type: String, enum: ['To Do', 'In Progress', 'Done', 'Blocked'], default: 'To Do' },
     priority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' },
     
     assignees: {
@@ -102,5 +102,8 @@ TaskSchema.index({ creator: 1 });
 TaskSchema.index({ assignees: 1 });
 TaskSchema.index({ status: 1 });
 TaskSchema.index({ dueDate: 1 });
+TaskSchema.index({ assignees: 1, status: 1 });
+TaskSchema.index({ creator: 1, status: 1 });
+TaskSchema.index({ status: 1, priority: 1 });
 
 module.exports = mongoose.model('Task', TaskSchema);

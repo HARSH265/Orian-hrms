@@ -28,8 +28,8 @@ router.route('/:id/reopen-requests').post(requestTaskReopen);
 router.route('/:id/log-time').post(logTimeToTask);
 router.route('/:id/dependencies').put(updateTaskDependencies);
 router.route('/:id/subtasks').post(createSubTask);
-router.route('/:id').get(getTaskById); // The controller has internal checks
 router.route('/reopen-requests/:requestId').put(resolveTaskReopen);
+router.route('/:id').get(getTaskById); // The controller has internal checks
 
 // --- Routes requiring specific permissions ---
 
@@ -42,7 +42,7 @@ router.route('/team-tasks').get(checkPermissions(PERMISSIONS.VIEW_TEAM_TASKS), g
 // Admin-level routes for managing ANY task in the system
 router.route('/all').get(checkPermissions(PERMISSIONS.EDIT_ALL_TASKS), getAllTasks);
 router.route('/:id')
-    .put(checkPermissions(PERMISSIONS.EDIT_ALL_TASKS), updateTask)
+    .put(updateTask)
     .delete(checkPermissions(PERMISSIONS.DELETE_ALL_TASKS), deleteTask);
 
 module.exports = router;

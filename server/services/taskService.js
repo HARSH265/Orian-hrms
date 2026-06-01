@@ -126,6 +126,22 @@ const createSubTask = async (req) => {
         err.status = 404;
         throw err;
     }
+    // Check nesting depth (max 3 levels)
+    if (parentTask._id) {
+        let depth = 0;
+        let currentParent = parentTask.parentTask;
+        while (currentParent && depth < 10) {
+            const parent = await Task.findById(currentParent).select('parentTask').lean();
+            if (!parent || !parent.parentTask) break;
+            currentParent = parent.parentTask;
+            depth++;
+        }
+        if (depth >= 3) {
+            const err = new Error('Maximum subtask nesting depth (3 levels) reached.');
+            err.status = 400;
+            throw err;
+        }
+    }
     // Security check – same as controller
     const isCreator = parentTask.creator.toString() === req.user.id.toString();
     const isAssignee = parentTask.assignees.some(id => id.toString() === req.user.id.toString());
@@ -162,7 +178,7 @@ const createSubTask = async (req) => {
 const getTaskById = async (req) => {
     const task = await Task.findById(req.params.id)
         .populate('creator', 'name')
-        .populate('assignees', 'name profilePictureUrl')
+        .populate('assignees', 'name profilePictureUrl manager')
         .populate('attachments', 'title fileUrl')
         .populate({ path: 'comments', populate: { path: 'author', select: 'name profilePictureUrl' } })
         .populate({ path: 'customFieldValues', populate: { path: 'field', model: 'CustomField' } })
@@ -288,7 +304,15 @@ const updateTask = async (req) => {
         err.status = 403;
         throw err;
     }
-    task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    // Whitelist allowed fields to prevent mass assignment
+    const allowedFields = ['title', 'description', 'priority', 'dueDate', 'timeEstimate', 'assignees', 'customFieldValues'];
+    const filteredUpdates = {};
+    allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+            filteredUpdates[field] = req.body[field];
+        }
+    });
+    task = await Task.findByIdAndUpdate(req.params.id, filteredUpdates, { new: true, runValidators: true });
     await createAuditLog({
         actor: req.user.id,
         action: 'TASK_UPDATED',
@@ -323,7 +347,7 @@ const deleteTask = async (req) => {
         details: { title: task.title },
         ipAddress: req.ip
     });
-    await task.remove();
+    await Task.findByIdAndDelete(task._id);
     return { message: 'Task deleted' };
 };
 
