@@ -10,6 +10,12 @@ const getStartOfTodayUTC = () => {
 
 const clockIn = async (employeeId) => {
     const today = getStartOfTodayUTC();
+
+    const existing = await Attendance.findOne({ employee: employeeId, date: today });
+    if (existing && existing.clockInTime) {
+        return existing;
+    }
+
     const attendanceRecord = await Attendance.findOneAndUpdate(
         { employee: employeeId, date: today },
         { $setOnInsert: { employee: employeeId, date: today }, $set: { clockInTime: new Date() } },
@@ -20,44 +26,66 @@ const clockIn = async (employeeId) => {
 
 const clockOut = async (employeeId) => {
     const today = getStartOfTodayUTC();
-    const record = await Attendance.findOne({ employee: employeeId, date: today });
+    const now = new Date();
 
-    if (!record || !record.clockInTime) {
-        return { error: 'You have not clocked in today.' };
-    }
-    if (record.clockOutTime) {
-        return { error: 'You have already clocked out today.' };
+    const record = await Attendance.findOneAndUpdate(
+        { employee: employeeId, date: today, clockInTime: { $exists: true }, clockOutTime: null },
+        { $set: { clockOutTime: now } },
+        { new: true }
+    );
+
+    if (!record) {
+        const existing = await Attendance.findOne({ employee: employeeId, date: today });
+        if (!existing || !existing.clockInTime) {
+            return { error: 'You have not clocked in today.' };
+        }
+        if (existing.clockOutTime) {
+            return { error: 'You have already clocked out today.' };
+        }
+        return { error: 'Clock-out failed. Please try again.' };
     }
 
-    record.clockOutTime = new Date();
-    const durationMs = record.clockOutTime - record.clockInTime;
+    const durationMs = now - record.clockInTime;
     record.totalHours = durationMs / (1000 * 60 * 60);
     await record.save();
 
     return { record };
 };
 
-const getMyAttendance = async (userId) => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+const getMyAttendance = async (userId, startDate, endDate) => {
+    const query = { employee: userId };
 
-    const records = await Attendance.find({
-        employee: userId,
-        date: { $gte: thirtyDaysAgo }
-    }).sort({ date: -1 });
+    if (startDate || endDate) {
+        query.date = {};
+        if (startDate) query.date.$gte = new Date(startDate);
+        if (endDate) query.date.$lte = new Date(endDate);
+    } else {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        query.date = { $gte: thirtyDaysAgo };
+    }
+
+    const records = await Attendance.find(query).sort({ date: -1 });
     return records;
 };
 
-const getTeamAttendance = async (managerId) => {
+const getTeamAttendance = async (managerId, startDate, endDate) => {
     const teamMembers = await User.find({ manager: managerId }).select('_id');
     const teamMemberIds = teamMembers.map(member => member._id);
 
-    const today = getStartOfTodayUTC();
+    const query = { employee: { $in: teamMemberIds } };
 
-    const records = await Attendance.find({
-        employee: { $in: teamMemberIds },
-        date: today
-    }).populate('employee', 'name');
+    if (startDate || endDate) {
+        query.date = {};
+        if (startDate) query.date.$gte = new Date(startDate);
+        if (endDate) query.date.$lte = new Date(endDate);
+    } else {
+        query.date = getStartOfTodayUTC();
+    }
+
+    const records = await Attendance.find(query)
+        .populate('employee', 'name')
+        .sort({ date: -1 });
     return records;
 };
 
