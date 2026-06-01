@@ -21,7 +21,15 @@ const generateTokens = async (res, userId, userRole) => {
   const tokenHash = await bcrypt.hash(refreshToken, salt);
 
   // Calculate expiry date based on JWT expiry (in seconds)
-  const expiresInSec = process.env.JWT_REFRESH_EXPIRE ? parseInt(process.env.JWT_REFRESH_EXPIRE) : 7 * 24 * 60 * 60;
+  const parseDuration = (str) => {
+      const match = str.match(/^(\d+)([smhd])$/);
+      if (!match) return parseInt(str) || 7 * 24 * 60 * 60;
+      const num = parseInt(match[1]);
+      const unit = match[2];
+      const multipliers = { s: 1, m: 60, h: 3600, d: 86400 };
+      return num * multipliers[unit];
+  };
+  const expiresInSec = process.env.JWT_REFRESH_EXPIRE ? parseDuration(process.env.JWT_REFRESH_EXPIRE) : 7 * 24 * 60 * 60;
   const expiresAt = new Date(Date.now() + expiresInSec * 1000);
 
   // Persist the hashed token
@@ -31,7 +39,7 @@ const generateTokens = async (res, userId, userRole) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
+        maxAge: expiresInSec * 1000,
     });
 
     return { accessToken };

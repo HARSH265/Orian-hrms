@@ -5,11 +5,11 @@ const authService = require('../services/authService');
 
 // Login – delegates to authService
 exports.login = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, twoFactorCode } = req.body;
     if (!email || !password) {
         return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
-    const result = await authService.loginUser(email, password, req, res);
+    const result = await authService.loginUser(email, password, req, res, twoFactorCode);
     return res.status(result.status).json(result.payload);
 });
 

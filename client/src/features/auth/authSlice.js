@@ -40,7 +40,7 @@ const authSlice = createSlice({
         localStorage.setItem('accessToken', action.payload);
     },
     // =======================================================================
-    clear2FASup: (state) => {
+    clear2FASetup: (state) => {
         state.twoFactorSetup = initialState.twoFactorSetup;
     }
   },

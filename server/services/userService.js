@@ -60,11 +60,15 @@ const getUserById = async (userId) => {
  * Get all users with optional filters & pagination (admin)
  */
 const getAllUsers = async (filter = {}, options = {}) => {
-    const { role, status, search, sortBy = 'name', order = 'asc', page = 1, limit = 10 } = filter;
+    const { role, status, search, sortBy = 'name', order = 'asc', page = 1, limit: rawLimit = 10 } = filter;
+    const limit = Math.min(Math.max(parseInt(rawLimit) || 10, 1), 100);
     const query = {};
     if (role) query.role = role;
     if (status) query.isActive = status === 'active';
-    if (search) query.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }];
+    if (search) {
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        query.$or = [{ name: { $regex: escapedSearch, $options: 'i' } }, { email: { $regex: escapedSearch, $options: 'i' } }];
+    }
     const sortOptions = { [sortBy]: order === 'desc' ? -1 : 1 };
     const skip = (page - 1) * limit;
     const [users, total] = await Promise.all([
@@ -86,7 +90,37 @@ const getAllUsers = async (filter = {}, options = {}) => {
 const updateUser = async (userId, updates, actorId, ip) => {
     const userBefore = await User.findById(userId).lean();
     if (!userBefore) throw new Error('User not found');
-    const updated = await User.findByIdAndUpdate(userId, updates, { new: true, runValidators: true });
+    // Whitelist allowed fields to prevent privilege escalation
+    const allowedFields = [
+        'name', 'jobTitle', 'department', 'manager', 'phone', 'address',
+        'employmentInfo', 'personalInfo', 'emergencyContact', 'roles', 'systemRole'
+    ];
+    const filteredUpdates = {};
+    allowedFields.forEach(field => {
+        if (updates[field] !== undefined) {
+            filteredUpdates[field] = updates[field];
+        }
+    });
+    // Prevent sensitive field overrides
+    delete filteredUpdates.password;
+    delete filteredUpdates.twoFactorAuth;
+    delete filteredUpdates.isActive;
+    delete filteredUpdates.failedLoginAttempts;
+    delete filteredUpdates.lockUntil;
+    // Prevent circular manager relationships
+    if (filteredUpdates.manager) {
+        let currentManagerId = filteredUpdates.manager.toString();
+        const visited = new Set([userId.toString()]);
+        while (currentManagerId) {
+            if (visited.has(currentManagerId)) {
+                throw new Error('Circular manager relationship detected');
+            }
+            visited.add(currentManagerId);
+            const managerUser = await User.findById(currentManagerId).select('manager').lean();
+            currentManagerId = managerUser?.manager?.toString();
+        }
+    }
+    const updated = await User.findByIdAndUpdate(userId, filteredUpdates, { new: true, runValidators: true });
     await createAuditLog({
         actor: actorId,
         action: 'USER_UPDATED',
@@ -244,13 +278,16 @@ module.exports = {
             err.status = 404;
             throw err;
         }
-        if (skillToEndorse.endorsements.includes(endorserId) || userId === endorserId) {
+        if (skillToEndorse.endorsements.some(e => e.toString() === endorserId) || userId.toString() === endorserId) {
             const err = new Error('Cannot endorse this skill.');
             err.status = 400;
             throw err;
         }
-        skillToEndorse.endorsements.push(endorserId);
-        await userToEndorse.save();
+        await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { 'skills.$[elem].endorsements': endorserId } },
+            { arrayFilters: [{ 'elem.skill': skillId }] }
+        );
         const updatedUser = await User.findById(userId).populate({
             path: 'skills.skill skills.endorsements',
             select: 'name category profilePictureUrl'

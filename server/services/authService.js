@@ -5,17 +5,24 @@ const RefreshToken = require('../model/refreshToken.model');
 const generateTokens = require('../utils/generateToken');
 const logger = require('../utils/logger');
 const { blacklistToken } = require('../utils/tokenBlacklist');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
+const { auditLogService } = require('./index');
 
 /**
  * Login a user. Handles password check, lockout, failed attempts, and token generation.
  * Returns an object { status, payload } where `payload` will be sent as JSON response.
  */
-const loginUser = async (email, password, req, res) => {
+const loginUser = async (email, password, req, res, twoFactorCode) => {
     // Find user with password
     const user = await User.findOne({ email }).select('+password');
     // Account lock check
     if (user && user.lockUntil && user.lockUntil > Date.now()) {
-        return { status: 403, payload: { success: false, message: 'Account locked. Try again later.' } };
+        return { status: 403, payload: { success: false, message: 'Invalid credentials' } };
+    }
+    // Check if account is active
+    if (user && !user.isActive) {
+        return { status: 403, payload: { success: false, message: 'Invalid credentials' } };
     }
     // User not found
     if (!user) {
@@ -38,8 +45,23 @@ const loginUser = async (email, password, req, res) => {
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
     await user.save();
+    // Check if 2FA is enabled
+    if (user.twoFactorAuth.isEnabled) {
+        if (!twoFactorCode) {
+            return { status: 200, payload: { success: true, twoFactorRequired: true } };
+        }
+        const verified = speakeasy.totp.verify({
+            secret: user.twoFactorAuth.secret,
+            encoding: 'base32',
+            token: twoFactorCode,
+        });
+        if (!verified) {
+            return { status: 401, payload: { success: false, message: 'Invalid 2FA code' } };
+        }
+    }
     // Generate tokens (access + refresh token stored via generateTokens)
     const { accessToken } = await generateTokens(res, user._id, user.systemRole);
+    await auditLogService.createAuditLog({ actor: user._id, action: 'USER_LOGIN', ipAddress: req.ip });
     return { status: 200, payload: { success: true, accessToken } };
 };
 
@@ -90,14 +112,13 @@ const logoutUser = async (req, res) => {
         const refreshToken = req.cookies.refreshToken;
         if (refreshToken) {
             const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-            const tokenDoc = await RefreshToken.findOne({ user: decoded.id, revoked: false });
-            if (tokenDoc) {
-                tokenDoc.revoked = true;
-                await tokenDoc.save();
-            }
+            await RefreshToken.updateMany({ user: decoded.id, revoked: false }, { revoked: true });
         }
     } catch (e) {
         // silently ignore
+    }
+    if (req.user) {
+        await auditLogService.createAuditLog({ actor: req.user._id, action: 'USER_LOGOUT', ipAddress: req.ip });
     }
     // Clear cookie
     res.cookie('refreshToken', 'none', {
@@ -113,8 +134,6 @@ const logoutUser = async (req, res) => {
  * Generate a new 2FA secret for a user and persist temporary secret.
  */
 const generateTwoFactorSecretUser = async (user) => {
-    const speakeasy = require('speakeasy');
-    const qrcode = require('qrcode');
     const secret = speakeasy.generateSecret({ name: `Orion HRMS (${user.email})` });
     user.twoFactorAuth.tempSecret = secret.base32;
     await user.save();
@@ -122,14 +141,13 @@ const generateTwoFactorSecretUser = async (user) => {
     const dataUrl = await new Promise((resolve, reject) => {
         qrcode.toDataURL(secret.otpauth_url, (err, url) => (err ? reject(err) : resolve(url)));
     });
-    return { qrCode: dataUrl, secret: secret.base32 };
+    return { qrCode: dataUrl };
 };
 
 /**
  * Verify a 2FA code and enable 2FA on the user.
  */
 const verifyTwoFactorCodeUser = async (user, code) => {
-    const speakeasy = require('speakeasy');
     if (!user.twoFactorAuth.tempSecret) {
         return { success: false, message: 'Please generate a secret first.' };
     }
