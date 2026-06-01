@@ -4,6 +4,7 @@ const Task = require('../model/task.model');
 const User = require('../model/user');
 const ChecklistInstance = require('../model/checklistInstance.model');
 const { createAuditLog } = require('./auditLogService');
+const logger = require('../utils/logger');
 
 const applyChecklist = async ({ templateId, targetUserId, creator, startDate, req }) => {
     // This is the exact same logic from your applyChecklistTemplate controller,
@@ -58,12 +59,12 @@ const applyChecklist = async ({ templateId, targetUserId, creator, startDate, re
                         break;
                     default:
                         // Log a warning if the assignee type is unknown
-                        console.warn(`Unknown assigneeType: ${taskTemplate.defaultAssignee.assigneeType} for task template "${taskTemplate.title}"`);
+                        logger.warn(`Unknown assigneeType: ${taskTemplate.defaultAssignee.assigneeType} for task template "${taskTemplate.title}"`);
                 }
 
                 // If no valid assignees were found for this rule, skip creating the task
                 if (assigneeIds.length === 0) {
-                    console.log(`Skipping task "${taskTemplate.title}" for template "${template.name}" due to no assignees found.`);
+                    logger.info(`Skipping task "${taskTemplate.title}" for template "${template.name}" due to no assignees found.`);
                     continue;
                 }
                 

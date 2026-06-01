@@ -1,14 +1,11 @@
-const Asset = require('../model/asset.model');
-const User = require('../model/user'); // We'll need this for validation
+const { getAllAssets, getAssetById, createAsset, updateAsset, deleteAsset, getMyAssets } = require('../services/assetService');
 
 // @desc    Get all assets
 // @route   GET /api/assets
 // @access  Private/Admin
 exports.getAllAssets = async (req, res, next) => {
     try {
-        const assets = await Asset.find({})
-            .populate('assignedTo', 'name email') // Show who the asset is assigned to
-            .sort({ createdAt: -1 });
+        const assets = await getAllAssets();
         res.status(200).json({ success: true, count: assets.length, data: assets });
     } catch (error) {
         next(error);
@@ -20,7 +17,7 @@ exports.getAllAssets = async (req, res, next) => {
 // @access  Private/Admin
 exports.createAsset = async (req, res, next) => {
     try {
-        const asset = await Asset.create(req.body);
+        const asset = await createAsset(req.body);
         res.status(201).json({ success: true, data: asset });
     } catch (error) {
         next(error);
@@ -32,26 +29,20 @@ exports.createAsset = async (req, res, next) => {
 // @access  Private/Admin
 exports.updateAsset = async (req, res, next) => {
     try {
-        let asset = await Asset.findById(req.params.id);
+        let asset = await getAssetById(req.params.id);
         if (!asset) {
             return res.status(404).json({ success: false, message: 'Asset not found' });
         }
 
-        // --- Business Logic for Assignment ---
-        // If an employee ID is provided in the body, update status to 'Assigned'
         if (req.body.assignedTo) {
             req.body.status = 'Assigned';
         }
-        // If assignedTo is explicitly set to null, update status to 'Available'
         if (req.body.assignedTo === null) {
             req.body.status = 'Available';
         }
 
-        asset = await Asset.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true,
-        });
-        
+        asset = await updateAsset(req.params.id, req.body);
+
         res.status(200).json({ success: true, data: asset });
     } catch (error) {
         next(error);
@@ -63,15 +54,14 @@ exports.updateAsset = async (req, res, next) => {
 // @access  Private/Admin
 exports.deleteAsset = async (req, res, next) => {
     try {
-        const asset = await Asset.findById(req.params.id);
+        const asset = await getAssetById(req.params.id);
         if (!asset) {
             return res.status(404).json({ success: false, message: 'Asset not found' });
         }
-        // Business Rule: Cannot delete an asset that is currently assigned.
         if (asset.status === 'Assigned') {
             return res.status(400).json({ success: false, message: 'Cannot delete an asset that is currently assigned to a user. Please unassign it first.' });
         }
-        await asset.remove();
+        await deleteAsset(asset);
         res.status(200).json({ success: true, message: 'Asset deleted successfully' });
     } catch (error) {
         next(error);
@@ -83,7 +73,7 @@ exports.deleteAsset = async (req, res, next) => {
 // @access  Private (Employee)
 exports.getMyAssets = async (req, res, next) => {
     try {
-        const myAssets = await Asset.find({ assignedTo: req.user.id });
+        const myAssets = await getMyAssets(req.user.id);
         res.status(200).json({ success: true, count: myAssets.length, data: myAssets });
     } catch (error) {
         next(error);

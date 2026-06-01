@@ -1,10 +1,10 @@
 // controllers/userController.js
 const User = require('../model/user');
 const ChecklistInstance = require('../model/checklistInstance.model');
-const { applyChecklist } = require('../services/checklistService')
-const { createAuditLog } = require('../services/auditLogService');
+const { checklistService, auditLogService } = require('../services');
 const Settings = require('../model/Settings');
 const userService = require('../services/userService');
+const logger = require('../utils/logger');
 
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -98,22 +98,22 @@ exports.deactivateUser = asyncHandler(async (req, res, next) => {
         // --- THE AUTOMATION LOGIC ---
         const settings = await Settings.findOne({ singleton: 'main_settings' });
         if (settings && settings.offboardingTemplateId) {
-            console.log(`Offboarding checklist found (${settings.offboardingTemplateId}). Applying to user ${userToDeactivate.name}...`);
-            await applyChecklist({
+            logger.info(`Offboarding checklist found (${settings.offboardingTemplateId}). Applying to user ${userToDeactivate.name}...`);
+            await checklistService.applyChecklist({
                 templateId: settings.offboardingTemplateId,
                 targetUserId: userId,
                 creator: req.user,
                 startDate: new Date(),
                 req
             });
-            await createAuditLog({
+            await auditLogService.createAuditLog({
                 actor: req.user.id,
                 action: 'OFFBOARDING_INITIATED',
                 target: { id: userId, type: 'User' },
                 details: { templateId: settings.offboardingTemplateId }
             });
         } else {
-            console.log("No default offboarding checklist configured in settings. Skipping automation.");
+            logger.info("No default offboarding checklist configured in settings. Skipping automation.");
         }
 
         // Use service to deactivate (sets isActive, logs audit)

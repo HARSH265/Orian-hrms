@@ -2,3 +2,111 @@
 [dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
 Server running in development mode on port 5004
 MongoDB Connected: localhost
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 21:33:41"}
+{"level":"error","message":"MongoDB connection error: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","service":"orion-api","timestamp":"2026-06-01 21:34:11"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 21:57:42"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 21:57:43"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:07:57"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-01 22:08:09"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:08:19"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:20:28"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:20:34"}
+{"level":"error","message":"[AUTH SERVICE] Login FAILED: Invalid credentials.","service":"orion-api","timestamp":"2026-06-01 22:22:12"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:25:02"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:25:02"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-01 22:25:12"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:25:23"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:29:06"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:29:19"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:29:29"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:29:33"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:29:40"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:29:43"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:30:01"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:30:15"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:30:19"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:30:27"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:30:32"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:30:51"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-01 22:33:49"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:33:59"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:39:38"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:39:50"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:39:52"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:05"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:40:06"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:12"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:32"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:40:33"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:39"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:40:40"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:44"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:40:45"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:40:55"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:40:56"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:01"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:41:02"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:07"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:41:08"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:37"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:41"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:41:42"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:48"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:52"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:41:56"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:42:01"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-01 22:42:16"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:19"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:42:20"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:25"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:42:26"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:32"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:37"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:40"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:42:45"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:42:46"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:43:05"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:43:06"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:50:30"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:50:31"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:50:50"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:50:51"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:51:01"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:51:02"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:51:17"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:51:18"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:51:27"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:51:34"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:51:36"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:52:53"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:52:53"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-01 22:53:06"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-01 22:53:06"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:56:59"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:57:00"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:57:23"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:57:24"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:57:49"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:57:50"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:02"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:03"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:08"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:09"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:14"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:15"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:28"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:30"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:39"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:40"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:52"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:58:53"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:58:59"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:59:00"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:59:07"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:59:08"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:59:20"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:59:21"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:59:29"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:59:30"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-01 22:59:56"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-01 22:59:57"}

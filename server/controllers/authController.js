@@ -1,6 +1,6 @@
 const logger = require('../utils/logger');
 const asyncHandler = require('../utils/asyncHandler');
-const { createAuditLog } = require('../services/auditLogService');
+const { auditLogService } = require('../services');
 const authService = require('../services/authService');
 
 // Login – delegates to authService
@@ -25,7 +25,7 @@ exports.verifyTwoFactorCode = asyncHandler(async (req, res) => {
     const { code } = req.body;
     const result = await authService.verifyTwoFactorCodeUser(req.user, code);
     if (result.success) {
-        await createAuditLog({ actor: req.user._id, action: 'USER_2FA_ENABLED', ipAddress: req.ip });
+        await auditLogService.createAuditLog({ actor: req.user._id, action: 'USER_2FA_ENABLED', ipAddress: req.ip });
         return res.status(200).json(result);
     }
     return res.status(400).json(result);
@@ -34,7 +34,7 @@ exports.verifyTwoFactorCode = asyncHandler(async (req, res) => {
 // Disable 2FA for the logged-in user
 exports.disableTwoFactor = asyncHandler(async (req, res) => {
     const result = await authService.disableTwoFactorUser(req.user);
-    await createAuditLog({ actor: req.user._id, action: 'USER_2FA_DISABLED', ipAddress: req.ip });
+    await auditLogService.createAuditLog({ actor: req.user._id, action: 'USER_2FA_DISABLED', ipAddress: req.ip });
     return res.status(200).json(result);
 });
 

@@ -4,6 +4,7 @@ const User = require('../model/user');
 const RefreshToken = require('../model/refreshToken.model');
 const generateTokens = require('../utils/generateToken');
 const logger = require('../utils/logger');
+const { blacklistToken } = require('../utils/tokenBlacklist');
 
 /**
  * Login a user. Handles password check, lockout, failed attempts, and token generation.
@@ -14,7 +15,7 @@ const loginUser = async (email, password, req, res) => {
     const user = await User.findOne({ email }).select('+password');
     // Account lock check
     if (user && user.lockUntil && user.lockUntil > Date.now()) {
-        return { status: 403, payload: { success: false, message: 'Account locked. Please try again later.' } };
+        return { status: 403, payload: { success: false, message: 'Account locked. Try again later.' } };
     }
     // User not found
     if (!user) {
@@ -35,7 +36,7 @@ const loginUser = async (email, password, req, res) => {
     }
     // Reset attempts on success
     user.failedLoginAttempts = 0;
-    user.lockUntil = undefined;
+    user.lockUntil = null;
     await user.save();
     // Generate tokens (access + refresh token stored via generateTokens)
     const { accessToken } = await generateTokens(res, user._id, user.systemRole);
@@ -80,6 +81,11 @@ const refreshTokenUser = async (req, res) => {
  * Logout user – revoke refresh token (if present) and clear cookie.
  */
 const logoutUser = async (req, res) => {
+    // Blacklist the current access token if provided in body
+    if (req.body && req.body.accessToken) {
+        blacklistToken(req.body.accessToken);
+    }
+
     try {
         const refreshToken = req.cookies.refreshToken;
         if (refreshToken) {

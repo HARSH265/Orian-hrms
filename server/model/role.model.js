@@ -30,7 +30,4 @@ const RoleSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
-// Index for role name
-RoleSchema.index({ name: 1 });
-
 module.exports = mongoose.model('Role', RoleSchema);

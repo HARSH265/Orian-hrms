@@ -3,6 +3,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const connectDB = require('../config/db');
 const mongoose = require('mongoose');
+const logger = require('../utils/logger');
 
 const Role = require('../model/role.model');
 const Department = require('../model/department.model');
@@ -130,12 +131,12 @@ async function seed() {
     managerId: managerUser._id,
   });
 
-  console.log('✅ Dummy data seeded successfully');
+  logger.info('✅ Dummy data seeded successfully');
   await mongoose.disconnect();
   process.exit(0);
 }
 
 seed().catch(err => {
-  console.error('❌ Seed error:', err);
+  logger.error('❌ Seed error:', err);
   process.exit(1);
 });

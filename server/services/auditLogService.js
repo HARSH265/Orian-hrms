@@ -1,4 +1,5 @@
 const AuditLog = require('../model/AuditLog');
+const logger = require('../utils/logger');
 
 /**
  * A reusable function to create a new audit log entry.
@@ -20,7 +21,7 @@ const createAuditLog = async (logData) => {
     } catch (error) {
         // In a real production environment, you might log this to a separate
         // logging service instead of the console (e.g., Sentry, LogDNA).
-        console.error('Error creating audit log:', error);
+        logger.error('Error creating audit log:', error);
     }
 };
 

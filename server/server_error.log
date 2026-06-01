@@ -1,0 +1,2 @@
+{"level":"error","message":"MongoDB connection error: connect ECONNREFUSED ::1:27017, connect ECONNREFUSED 127.0.0.1:27017","service":"orion-api","timestamp":"2026-06-01 21:34:11"}
+{"level":"error","message":"[AUTH SERVICE] Login FAILED: Invalid credentials.","service":"orion-api","timestamp":"2026-06-01 22:22:12"}

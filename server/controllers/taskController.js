@@ -11,9 +11,8 @@
 const mongoose = require('mongoose');
 const Task = require('../model/task.model');
 const User = require('../model/user');
-const Document = require('../model/Document'); // <-- IMPORT DOCUMENT MODEL
-const { createNotification } = require('../services/notificationService');
-const { createAuditLog } = require('../services/auditLogService');
+const Document = require('../model/Document');
+const { notificationService, auditLogService } = require('../services');
 const taskService = require('../services/taskService');
 const asyncHandler = require('../utils/asyncHandler');
 
@@ -222,7 +221,7 @@ exports.updateTaskStatus = async (req, res, next) => {
         // --- THIS AUDIT LOG ALREADY SAVES WHO CHANGED THE STATUS ---
         // The actor: req.user.id field automatically records the person
         // who made the API call, thus saving the history correctly.
-        await createAuditLog({
+        await auditLogService.createAuditLog({
             actor: req.user.id, 
             action: 'TASK_STATUS_UPDATED', 
             target: { id: task._id, type: 'Task' },
@@ -232,7 +231,7 @@ exports.updateTaskStatus = async (req, res, next) => {
 
         // --- Notification Logic ---
        if (task.status === 'Done' && !isCreator) {
-            await createNotification({
+            await notificationService.createNotification({
                 taskId: task._id,
                 sender: req.user.id,
                 message: `${req.user.name} completed the task: "${task.title}"`,
@@ -240,7 +239,7 @@ exports.updateTaskStatus = async (req, res, next) => {
                 type: 'Task',
             }, req);
         } else if (oldStatus === 'Done' && task.status !== 'Done') {
-            await createNotification({
+            await notificationService.createNotification({
                 taskId: task._id,
                 sender: req.user.id,
                 message: `${req.user.name} re-opened the task: "${task.title}"`,
@@ -365,12 +364,12 @@ exports.requestTaskReopen = async (req, res, next) => {
         task.reopenRequests.push({ requestedBy: req.user.id, reason });
         await task.save();
 
-        await createAuditLog({
+        await auditLogService.createAuditLog({
             actor: req.user.id, action: 'TASK_REOPEN_REQUESTED', target: { id: task._id, type: 'Task' },
             details: { reason }, ipAddress: req.ip
         });
 
-        await createNotification({
+        await notificationService.createNotification({
             recipient: task.creator, sender: req.user.id,
             message: `${req.user.name} requested to re-open task: "${task.title}"`,
             link: `/tasks`, // A better link would point to the task details
@@ -425,12 +424,12 @@ exports.resolveTaskReopen = async (req, res, next) => {
 
         await task.save();
 
-        await createAuditLog({
+        await auditLogService.createAuditLog({
             actor: req.user.id, action: `TASK_REOPEN_${status.toUpperCase()}`, target: { id: task._id, type: 'Task' },
             details: { requestId: req.params.requestId }, ipAddress: req.ip
         });
 
-        await createNotification({
+        await notificationService.createNotification({
             recipient: request.requestedBy, sender: req.user.id,
             message: messageForNotification, link: `/tasks`, type: 'Task',
         }, req);
@@ -530,7 +529,7 @@ exports.logTimeToTask = async (req, res, next) => {
 
         await task.save();
 
-        await createAuditLog({
+        await auditLogService.createAuditLog({
             actor: req.user.id,
             action: 'TASK_TIME_LOGGED',
             target: { id: task._id, type: 'Task' },

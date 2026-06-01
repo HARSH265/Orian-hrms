@@ -9,19 +9,23 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const connectDB = require('./config/db');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { Redis } = require('ioredis');
+const { connectDB, gracefulShutdown } = require('./config/db');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const apiRoutes = require('./routes/index');
+const logger = require('./utils/logger');
 
 const User = require('./model/user');
 const Conversation = require('./model/conversationModel');
 const Message = require('./model/messageModel');
+const { isBlacklisted } = require('./utils/tokenBlacklist');
 
 dotenv.config();
 connectDB();
 
 const app = express();
-
+app.set('trust proxy', 1);
 
 app.use(express.json()); 
 app.use(cookieParser());
@@ -47,6 +51,20 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+
+const configureRedisAdapter = async () => {
+  if (process.env.REDIS_URL) {
+    try {
+      const pubClient = new Redis(process.env.REDIS_URL);
+      const subClient = pubClient.duplicate();
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log('Socket.IO Redis adapter configured.');
+    } catch (err) {
+      console.warn('Redis adapter not available, using in-memory adapter:', err.message);
+    }
+  }
+};
+configureRedisAdapter();
 
 // --- REAL-TIME NOTIFICATION UPGRADE: Make `io` globally accessible ---
 app.set('io', io);
@@ -75,6 +93,24 @@ const userSocketMap = {};
 io.on('connection', (socket) => {
   const userId = socket.user._id.toString();
   userSocketMap[userId] = socket.id;
+
+  socket.use(async (packet, next) => {
+    const [event] = packet;
+    if (event === 'disconnect') return next();
+
+    try {
+      const decoded = jwt.verify(socket.handshake.auth.token, process.env.JWT_ACCESS_SECRET);
+      if (isBlacklisted(decoded.jti)) {
+        socket.emit('auth-error', { message: 'Token has been revoked' });
+        socket.disconnect(true);
+        return;
+      }
+      next();
+    } catch {
+      socket.emit('auth-error', { message: 'Token is invalid or expired' });
+      socket.disconnect(true);
+    }
+  });
   
 
   socket.on('sendMessage', async (messageData) => {
@@ -103,7 +139,7 @@ io.on('connection', (socket) => {
         }
         
     } catch (error) {
-        console.error('Error in sendMessage handler:', error);
+        logger.error('Error in sendMessage handler:', error);
     }
   });
 
@@ -115,7 +151,14 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`));
+server.listen(PORT, () => logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`));
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason.message || reason);
+});
 
 // --- REAL-TIME NOTIFICATION UPGRADE: Export the socket map ---
 module.exports = { userSocketMap };

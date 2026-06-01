@@ -2,6 +2,7 @@
 
 const Notification = require('../model/notification.model');
 const Task = require('../model/task.model');
+const logger = require('../utils/logger');
 
 /**
  * A reusable, enhanced function to create notifications and emit real-time events.
@@ -39,7 +40,7 @@ const createNotification = async (details, req) => {
         }
         
         if (recipients.length === 0) {
-            console.log("No recipients found for this notification.");
+            logger.info("No recipients found for this notification.");
             return;
         }
 
@@ -50,7 +51,7 @@ const createNotification = async (details, req) => {
         const finalRecipients = uniqueRecipientIds.filter(id => id !== sender?.toString());
 
         if (finalRecipients.length === 0) {
-            console.log("No recipients to notify after filtering out the sender.");
+            logger.info("No recipients to notify after filtering out the sender.");
             return;
         }
 
@@ -70,12 +71,12 @@ const createNotification = async (details, req) => {
             const io = req.app.get('io');
             createdNotifications.forEach(notification => {
                 io.to(notification.recipient.toString()).emit('newNotification', notification);
-                console.log(`---> Real-time notification sent to user room: ${notification.recipient}`);
+                logger.info(`---> Real-time notification sent to user room: ${notification.recipient}`);
             });
         }
 
     } catch (error) {
-        console.error('Error in createNotification service:', error);
+        logger.error('Error in createNotification service:', error);
     }
 };
 

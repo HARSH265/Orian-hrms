@@ -1,11 +1,12 @@
 // In: server/utils/generateToken.js
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const RefreshToken = require('../model/refreshToken.model');
 
 const generateTokens = async (res, userId, userRole) => {
     
-    const accessToken = jwt.sign({ id: userId, role: userRole }, process.env.JWT_ACCESS_SECRET, {
+    const accessToken = jwt.sign({ id: userId, role: userRole, jti: crypto.randomUUID() }, process.env.JWT_ACCESS_SECRET, {
         expiresIn: process.env.JWT_ACCESS_EXPIRE || '15m',
     });
 

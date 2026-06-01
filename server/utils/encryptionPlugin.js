@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const logger = require('./logger');
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -61,7 +62,7 @@ function encryptionPlugin(schema, options) {
                 try {
                     doc[field] = decryptValue(doc[field], secret);
                 } catch (e) {
-                    console.error(`Failed to decrypt field "${field}":`, e.message);
+                    logger.error(`Failed to decrypt field "${field}":`, e.message);
                 }
             }
         }

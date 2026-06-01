@@ -1,10 +1,11 @@
 // In test-cloudinary.js
 const dotenv = require('dotenv');
 const cloudinary = require('cloudinary').v2;
+const logger = require('./utils/logger');
 
 dotenv.config();
 
-console.log("--- Starting Cloudinary Sanity Check ---");
+logger.info("--- Starting Cloudinary Sanity Check ---");
 
 // Explicitly configure with the loaded variables
 cloudinary.config({ 
@@ -17,15 +18,15 @@ cloudinary.config({
 // It just asks for your account usage details.
 const runTest = async () => {
     try {
-        console.log("Attempting to connect to Cloudinary...");
+        logger.info("Attempting to connect to Cloudinary...");
         const usage = await cloudinary.api.usage();
-        console.log("\n✅ SUCCESS! Connection to Cloudinary is working.");
-        console.log("Cloud Name:", usage.cloud_name);
-        console.log("Plan:", usage.plan);
+        logger.info("\n✅ SUCCESS! Connection to Cloudinary is working.");
+        logger.info("Cloud Name:", usage.cloud_name);
+        logger.info("Plan:", usage.plan);
     } catch (error) {
-        console.error("\n❌ FAILED! Could not connect to Cloudinary.");
-        console.error("This confirms the problem is with your credentials or network connection.");
-        console.error("Full Error:", error.message);
+        logger.error("\n❌ FAILED! Could not connect to Cloudinary.");
+        logger.error("This confirms the problem is with your credentials or network connection.");
+        logger.error("Full Error:", error.message);
     }
 };
 

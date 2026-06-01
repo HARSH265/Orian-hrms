@@ -3,7 +3,7 @@ const TaskTemplate = require('../model/taskTemplate.model');
 const Task = require('../model/task.model');
 const User = require('../model/user');
 const ChecklistInstance = require('../model/checklistInstance.model'); 
-const { applyChecklist } = require('../services/checklistService');
+const { checklistService } = require('../services');
 const asyncHandler = require('../utils/asyncHandler');
 
 // --- Standard CRUD for Checklist Templates ---
@@ -47,7 +47,7 @@ exports.createChecklistTemplate = asyncHandler(async (req, res) => {
 // @route   POST /api/checklist-templates/apply
 exports.applyChecklistTemplate = asyncHandler(async (req, res) => {
     const { templateId, targetUserId, startDate } = req.body;
-    const result = await applyChecklist({
+    const result = await checklistService.applyChecklist({
         templateId,
         targetUserId,
         creator: req.user,
@@ -115,7 +115,7 @@ exports.updateChecklistTemplate = asyncHandler(async (req, res, next) => {
     } finally {
         session.endSession();
     }
-};
+});
 
 // @desc    Delete a checklist template
 // @route   DELETE /api/checklist-templates/:id
@@ -158,4 +158,4 @@ exports.deleteChecklistTemplate = asyncHandler(async (req, res, next) => {
     } finally {
         session.endSession();
     }
-};
+});

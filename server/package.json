@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
@@ -19,19 +20,20 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.1.0",
+    "express-request-id": "^1.4.1",
+    "helmet": "^7.2.0",
+    "ioredis": "^5.11.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
     "mongoose-encryption": "^2.1.2",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cache": "^5.1.2",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0",
-    "node-cache": "^5.1.2",
-    "winston": "^3.13.0",
-    "express-rate-limit": "^7.1.0",
-    "helmet": "^7.2.0",
-    "express-request-id": "^1.4.1"
+    "winston": "^3.13.0"
   },
   "devDependencies": {
     "install": "^0.13.0",

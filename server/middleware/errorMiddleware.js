@@ -1,6 +1,8 @@
 // middleware/errorMiddleware.js
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
-    console.error(err.stack); // Log the error stack for debugging
+    logger.error(err.stack); // Log the error stack for debugging
 
     // Mongoose bad ObjectId
     if (err.name === 'CastError') {

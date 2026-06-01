@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 // --- Core Layouts and Authentication ---
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 //import WelcomeWizardPage from './pages/WelcomeWizardPage'; // <-- THIS IMPORT IS NOW CORRECTLY ADDED BACK
@@ -68,62 +69,64 @@ function App() {
   }, [token, user, dispatch]);
 
   return (
-    <Routes>
-      {/* Public Route */}
-      <Route path="/login" element={<LoginPage />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public Route */}
+        <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute />}>
-        {/* The WizardGuard intercepts new users */}
-        <Route element={<WizardGuard />}>
-          {/* All standard authenticated routes use the MainLayout */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<DashboardPage />} />
-            
-            {/* User & Manager Routes */}
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/leave" element={<LeavePage />} />
-            <Route path="/expenses" element={<MyExpensesPage />} /> 
-            <Route path="/team" element={<TeamPage />} />
-            <Route path="/expenses/approvals" element={<ExpenseApprovalPage />} />
-            <Route path="/tasks" element={<TaskRouterPage />} />
-            <Route path="/directory" element={<DirectoryPage />} />
-            <Route path="/performance" element={<PerformancePage />} />
-            <Route path="/attendance" element={<MyAttendancePage />} />
-            <Route path="/team/attendance" element={<TeamAttendancePage />} />    
-             <Route path="/documents" element={<MyDocumentsPage />} />
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          {/* The WizardGuard intercepts new users */}
+          <Route element={<WizardGuard />}>
+            {/* All standard authenticated routes use the MainLayout */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<DashboardPage />} />
+              
+              {/* User & Manager Routes */}
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/leave" element={<LeavePage />} />
+              <Route path="/expenses" element={<MyExpensesPage />} /> 
+              <Route path="/team" element={<TeamPage />} />
+              <Route path="/expenses/approvals" element={<ExpenseApprovalPage />} />
+              <Route path="/tasks" element={<TaskRouterPage />} />
+              <Route path="/directory" element={<DirectoryPage />} />
+              <Route path="/performance" element={<PerformancePage />} />
+              <Route path="/attendance" element={<MyAttendancePage />} />
+              <Route path="/team/attendance" element={<TeamAttendancePage />} />    
+               <Route path="/documents" element={<MyDocumentsPage />} />
 
-             {/* --- NEW: Job Openings Route (for all users) --- */}
-            <Route path="/jobs" element={<JobOpeningsPage />} />
-            <Route path="/surveys" element={<MySurveysPage />} /> 
-            <Route path="/surveys/:surveyId" element={<SurveyTakerPage />} /> 
+               {/* --- NEW: Job Openings Route (for all users) --- */}
+              <Route path="/jobs" element={<JobOpeningsPage />} />
+              <Route path="/surveys" element={<MySurveysPage />} /> 
+              <Route path="/surveys/:surveyId" element={<SurveyTakerPage />} /> 
 
-            {/* Admin-Specific Routes */}
-            <Route path="/admin/users" element={<AdminUserPage />} />
-            <Route path="/admin/departments" element={<DepartmentPage />} />
-            <Route path="/admin/leaves" element={<AdminLeavePage />} />
-            <Route path="/admin/expenses" element={<AdminExpensesPage />} /> 
-            <Route path="/admin/announcements" element={<AnnouncementAdminPage />} />
-            <Route path="/admin/assets" element={<AssetAdminPage />} />
-            <Route path="/admin/checklist-templates" element={<ChecklistTemplatePage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/admin/reports&analytics" element={<AdminDashboardPage />} />
-            <Route path="/admin/performance" element={<AdminPerformancePage />} />
-            <Route path="/admin/jobs" element={<AdminJobsPage />} />
-            <Route path="/admin/referrals" element={<AdminReferralsPage />} />
-            <Route path="/admin/skills" element={<AdminSkillsPage />} />
-             <Route path="/admin/leave-policies" element={<AdminLeavePoliciesPage />} />
-             <Route path="/admin/surveys" element={<AdminSurveysPage />} />
-             <Route path="/admin/surveys/:surveyId/results" element={<SurveyResultsPage />}/>
-             <Route path="/admin/documents" element={<AdminDocumentsPage />} />
-             <Route path="/admin/roles" element={<AdminRolePage/>} />
-              <Route path="/admin/settings" element={<AdminSettingsPage />} /> 
-              <Route path="/admin/org-chart-editor" element={<AdminOrgChartEditorPage />} />
-              <Route path="/admin/settings/custom-fields" element={<AdminCustomFieldsPage />} />              
+              {/* Admin-Specific Routes */}
+              <Route path="/admin/users" element={<AdminUserPage />} />
+              <Route path="/admin/departments" element={<DepartmentPage />} />
+              <Route path="/admin/leaves" element={<AdminLeavePage />} />
+              <Route path="/admin/expenses" element={<AdminExpensesPage />} /> 
+              <Route path="/admin/announcements" element={<AnnouncementAdminPage />} />
+              <Route path="/admin/assets" element={<AssetAdminPage />} />
+              <Route path="/admin/checklist-templates" element={<ChecklistTemplatePage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/admin/reports&analytics" element={<AdminDashboardPage />} />
+              <Route path="/admin/performance" element={<AdminPerformancePage />} />
+              <Route path="/admin/jobs" element={<AdminJobsPage />} />
+              <Route path="/admin/referrals" element={<AdminReferralsPage />} />
+              <Route path="/admin/skills" element={<AdminSkillsPage />} />
+               <Route path="/admin/leave-policies" element={<AdminLeavePoliciesPage />} />
+               <Route path="/admin/surveys" element={<AdminSurveysPage />} />
+               <Route path="/admin/surveys/:surveyId/results" element={<SurveyResultsPage />}/>
+               <Route path="/admin/documents" element={<AdminDocumentsPage />} />
+               <Route path="/admin/roles" element={<AdminRolePage/>} />
+                <Route path="/admin/settings" element={<AdminSettingsPage />} /> 
+                <Route path="/admin/org-chart-editor" element={<AdminOrgChartEditorPage />} />
+                <Route path="/admin/settings/custom-fields" element={<AdminCustomFieldsPage />} />              
+            </Route>
           </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 }
 

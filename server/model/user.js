@@ -97,6 +97,7 @@ isActive: { type: Boolean, default: true },
 UserSchema.index({ systemRole: 1 });
 UserSchema.index({ department: 1 });
 UserSchema.index({ manager: 1 });
+UserSchema.index({ name: 'text' });
 
 // Attach encryption plugin for 2FA secrets
 if (process.env.ENCRYPTION_SECRET_KEY) {

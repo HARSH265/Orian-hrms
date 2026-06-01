@@ -20,7 +20,4 @@ const DepartmentSchema = new mongoose.Schema({
     // We could add more fields later, like 'headOfDepartment' (ref: 'User')
 }, { timestamps: true });
 
-// Index for department name
-DepartmentSchema.index({ name: 1 });
-
 module.exports = mongoose.model('Department', DepartmentSchema);

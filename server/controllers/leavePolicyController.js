@@ -1,36 +1,45 @@
-const LeavePolicy = require('../model/leavePolicy.model');
 const asyncHandler = require('../utils/asyncHandler');
+const {
+    getAllLeavePolicies,
+    createLeavePolicy,
+    updateLeavePolicy,
+    archiveLeavePolicy
+} = require('../services/leavePolicyService');
 
-// @desc    Get all active leave policies
 exports.getAllLeavePolicies = asyncHandler(async (req, res, next) => {
     try {
-        const policies = await LeavePolicy.find({ isArchived: false }).sort({ name: 1 });
+        const policies = await getAllLeavePolicies();
         res.status(200).json({ success: true, data: policies });
-    } catch (error) { next(error); }
-    });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// @desc    Admin creates a new leave policy
 exports.createLeavePolicy = asyncHandler(async (req, res, next) => {
     try {
-        const policy = await LeavePolicy.create(req.body);
+        const policy = await createLeavePolicy(req.body);
         res.status(201).json({ success: true, data: policy });
-    } catch (error) { next(error); }
-    });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// @desc    Admin updates a leave policy
 exports.updateLeavePolicy = asyncHandler(async (req, res, next) => {
     try {
-        const policy = await LeavePolicy.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        const policy = await updateLeavePolicy(req.params.id, req.body);
         if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
         res.status(200).json({ success: true, data: policy });
-    } catch (error) { next(error); }
-    });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// @desc    Admin archives a leave policy (soft delete)
 exports.archiveLeavePolicy = asyncHandler(async (req, res, next) => {
     try {
-        const policy = await LeavePolicy.findByIdAndUpdate(req.params.id, { isArchived: true }, { new: true });
+        const policy = await archiveLeavePolicy(req.params.id);
         if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
         res.status(200).json({ success: true, message: 'Policy archived' });
-    } catch (error) { next(error); }
-};
+    } catch (error) {
+        next(error);
+    }
+});

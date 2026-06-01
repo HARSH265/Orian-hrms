@@ -15,7 +15,7 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       // Connect to the server with the auth token
-      const newSocket = io('http://localhost:5004', { // Your backend server URL
+      const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5001', {
         auth: {
           token: token,
         },

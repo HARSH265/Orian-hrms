@@ -170,7 +170,8 @@ const getTaskById = async (req) => {
             path: 'subTasks',
             select: 'title status assignees',
             populate: { path: 'assignees', select: 'name profilePictureUrl' }
-        });
+        })
+        .lean();
     if (!task) {
         const err = new Error('Task not found');
         err.status = 404;
@@ -178,15 +179,13 @@ const getTaskById = async (req) => {
     }
     const isCreator = task.creator._id.toString() === req.user.id.toString();
     const isAssignee = task.assignees.some(a => a._id.toString() === req.user.id.toString());
-    await task.populate({ path: 'assignees', select: 'name profilePictureUrl manager' });
     const isManagerOfAssignee = task.assignees.some(a => a.manager?.toString() === req.user.id.toString());
     if (!isCreator && !isAssignee && !isManagerOfAssignee && req.user.role !== 'super-admin' && req.user.role !== 'hr') {
         const err = new Error('Not authorized to view this task');
         err.status = 403;
         throw err;
     }
-    // Return plain object (like .toObject())
-    return task.toObject();
+    return task;
 };
 
 /**

@@ -1,6 +1,6 @@
 const User = require('../model/user');
 const ChecklistInstance = require('../model/checklistInstance.model');
-const { createAuditLog } = require('../services/auditLogService');
+const { createAuditLog } = require('./auditLogService');
 const logger = require('../utils/logger');
 
 /**
@@ -52,7 +52,8 @@ const getUserById = async (userId) => {
             path: 'skills.skill',
             model: 'Skill',
             select: 'name',
-        });
+        })
+        .lean();
 };
 
 /**
@@ -217,7 +218,8 @@ module.exports = {
                 path: 'skills.skill',
                 model: 'Skill',
                 select: 'name'
-            });
+            })
+            .lean();
         return user;
     },
     getManagerUsers: async () => {

@@ -7,13 +7,14 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 const { protect } = require('../middleware/authMiddleware');
 const path = require('path'); // We still use this for the file filter
+const logger = require('../utils/logger');
 
 // --- Configuration ---
 const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
 
 if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
-    console.error("\n\n!!! FATAL ERROR IN upload.routes.js !!!");
-    console.error("Cloudinary environment variables are not set in your .env file.");
+    logger.error("\n\n!!! FATAL ERROR IN upload.routes.js !!!");
+    logger.error("Cloudinary environment variables are not set in your .env file.");
     process.exit(1);
 }
 
@@ -34,7 +35,7 @@ const storage = new CloudinaryStorage({
             resourceType = 'raw';
         }
         
-        console.log(`Uploading a .${fileExt} file. Setting resource_type to: ${resourceType}`);
+        logger.info(`Uploading a .${fileExt} file. Setting resource_type to: ${resourceType}`);
 
         return {
             folder: 'orion_hrms',
@@ -76,7 +77,7 @@ router.post('/', protect, upload.single('file'), (req, res, next) => {
             public_id: req.file.filename // This will now contain the random ID from Cloudinary
         });
     } catch (error) {
-        console.error("Error in upload route:", error);
+        logger.error("Error in upload route:", error);
         next(error);
 
     }
@@ -96,7 +97,7 @@ router.delete('/', protect, async (req, res, next) => {
             res.status(404).json({ success: false, message: 'File not found on Cloudinary.' });
         }
     } catch (error) {
-        console.error("Error deleting file from Cloudinary:", error);
+        logger.error("Error deleting file from Cloudinary:", error);
         next(error);
     }
 });
