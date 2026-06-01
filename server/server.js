@@ -26,7 +26,8 @@ const app = express();
 app.use(express.json()); 
 app.use(cookieParser());
 app.use(helmet());
-app.use(requestId()); 
+app.use(requestId());
+app.use(require('./middleware/requestLogger')) 
 
 const corsOptions = {
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000', 

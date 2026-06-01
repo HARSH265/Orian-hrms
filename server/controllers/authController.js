@@ -5,6 +5,7 @@ const { createAuditLog } = require('../services/auditLogService');
 const speakeasy = require('speakeasy'); 
 const qrcode = require('qrcode');
 const RefreshToken = require('../model/refreshToken.model');
+const logger = require('../utils/logger');
 const bcrypt = require('bcrypt');
 
 exports.login = async (req, res, next) => {
@@ -21,7 +22,7 @@ exports.login = async (req, res, next) => {
         }
         
 if (!user) {
-    console.error('[AUTH CONTROLLER] Login FAILED: Invalid credentials.');
+    logger.error('[AUTH CONTROLLER] Login FAILED: Invalid credentials.');
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
 }
 
@@ -34,7 +35,7 @@ if (!passwordMatches) {
         user.lockUntil = Date.now() + 15 * 60 * 1000; // lock for 15 minutes
     }
     await user.save();
-    console.error('[AUTH CONTROLLER] Login FAILED: Invalid credentials.');
+    logger.error('[AUTH CONTROLLER] Login FAILED: Invalid credentials.');
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
 }
 
@@ -50,7 +51,7 @@ await user.save();
         
         res.status(200).json({ success: true, accessToken });
     } catch (error) {
-        console.error('[AUTH CONTROLLER] CRITICAL ERROR in login:', error);
+        logger.error('[AUTH CONTROLLER] CRITICAL ERROR in login:', error);
         next(error);
     }
 };
@@ -153,7 +154,7 @@ exports.refreshToken = async (req, res, next) => {
         // Load user
         const user = await User.findById(decoded.id);
         if (!user) {
-            console.error('[AUTH CONTROLLER] Refresh FAILED: User in refresh token not found.');
+            logger.error('[AUTH CONTROLLER] Refresh FAILED: User in refresh token not found.');
             return res.status(401).json({ success: false, message: 'Unauthorized: Invalid user for refresh' });
         }
         // Rotate: generate new tokens (access + new refresh) and revoke old record
@@ -162,7 +163,7 @@ exports.refreshToken = async (req, res, next) => {
         await tokenDoc.save();
         res.status(200).json({ success: true, accessToken });
     } catch (error) {
-        console.error('[AUTH CONTROLLER] CRITICAL ERROR in refreshToken:', error.message);
+        logger.error('[AUTH CONTROLLER] CRITICAL ERROR in refreshToken:', error.message);
         return res.status(403).json({ success: false, message: 'Forbidden: Invalid refresh token.' });
     }
 };
