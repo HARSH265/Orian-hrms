@@ -7,7 +7,8 @@ const {
     getMyAssets
 } = require('../controllers/assetController');
 
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ const router = express.Router();
 router.route('/my-assets').get(protect, getMyAssets);
 
 // All routes below are for admins only
-router.use(protect, authorize('hr', 'super-admin'));
+router.use(protect, checkPermissions(PERMISSIONS.MANAGE_ASSETS));
 
 router.route('/')
     .get(getAllAssets)

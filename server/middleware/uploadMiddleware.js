@@ -1,32 +1,42 @@
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 const dotenv = require('dotenv');
 
+// We still load dotenv at the top
 dotenv.config();
 
-// Configure Cloudinary with your credentials
-cloudinary.config({ 
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-    api_key: process.env.CLOUDINARY_API_KEY, 
-    api_secret: process.env.CLOUDINARY_API_SECRET 
-});
+// --- THE FIX: Move configuration into the multer call ---
+// This ensures that process.env is fully loaded when multer needs it.
 
-// Set up the storage engine for Cloudinary
 const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+    cloudinary: () => {
+        // Configure cloudinary right when it's needed
+        cloudinary.config({ 
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+            api_key: process.env.CLOUDINARY_API_KEY, 
+            api_secret: process.env.CLOUDINARY_API_SECRET 
+        });
+        return cloudinary;
+    },
     params: {
-        folder: 'orion_hrms', // A folder name in your Cloudinary account
+        folder: 'orion_hrms',
         allowed_formats: ['jpeg', 'jpg', 'png', 'pdf'],
-        // You can add transformations here if you want
-        // transformation: [{ width: 500, height: 500, crop: 'limit' }]
     },
 });
 
-// Initialize multer with the Cloudinary storage engine
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: 10000000 }, // 10MB file size limit
+    fileFilter: (req, file, cb) => {
+        // Add a check inside the filter, which runs per-request
+        const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+        if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+            // Pass an error to multer if config is missing
+            return cb(new Error('Server configuration error: Cloudinary credentials not found.'));
+        }
+        cb(null, true); // Otherwise, allow the upload
+    }
 });
 
 module.exports = upload;

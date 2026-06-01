@@ -56,9 +56,9 @@ const MyExpensesPage = () => {
             key: 'receiptUrl',
             render: (url) => {
                 if (url) {
-                    // Assuming your backend is running on localhost:5001
+                    // Assuming your backend is running on localhost:5004
                     // For production, you would use your actual domain
-                    return <a href={`http://localhost:5001${url}`} target="_blank" rel="noopener noreferrer">View</a>;
+                    return <a href={`http://localhost:5004${url}`} target="_blank" rel="noopener noreferrer">View</a>;
                 }
                 return <Text type="secondary">N/A</Text>;
             }

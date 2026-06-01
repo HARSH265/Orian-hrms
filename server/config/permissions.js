@@ -23,6 +23,8 @@ const PERMISSIONS = {
     VIEW_TEAM_LEAVE: 'view_team_leave',
     APPROVE_LEAVE_REQUESTS: 'approve_leave_requests',
     VIEW_TEAM_ATTENDANCE: 'view_team_attendance',
+    VIEW_TEAM_REVIEWS: 'view_team_reviews',
+    VIEW_TEAM_EXPENSES: 'view_team_expenses',
 
     // ======== TASK MANAGEMENT ========
     CREATE_TASKS: 'create_tasks',
@@ -43,9 +45,18 @@ const PERMISSIONS = {
     // ======== RECRUITING (ADMIN) ========
     MANAGE_JOBS: 'manage_jobs',
     VIEW_REFERRALS: 'view_referrals',
+    MANAGE_SURVEYS: 'manage_surveys',
+    VIEW_SURVEYS: 'view_surveys',
+    MANAGE_SKILLS: 'manage_skills',
+    MANAGE_REVIEWS: 'manage_reviews',
+    VIEW_TEAM_REVIEWS: 'view_team_reviews',
+    MANAGE_REFERRALS: 'manage_referrals',
+    MANAGE_EXPENSES: 'manage_expenses',
+    VIEW_TEAM_EXPENSES: 'view_team_expenses',
 
     // ======== SETTINGS (SUPER-ADMIN) ========
     MANAGE_SYSTEM_SETTINGS: 'manage_system_settings',
+    VIEW_REPORTS: 'view_reports',
     MANAGE_CUSTOM_FIELDS: 'manage_custom_fields',
     // ======== DOCUMENT MANAGEMENT (ADMIN) ========
     VIEW_DOCUMENTS: 'view_documents',
@@ -68,6 +79,8 @@ module.exports = {
             PERMISSIONS.APPROVE_LEAVE_REQUESTS,
             PERMISSIONS.VIEW_TEAM_ATTENDANCE,
             PERMISSIONS.CREATE_TASKS,
+            PERMISSIONS.VIEW_TEAM_REVIEWS,
+            PERMISSIONS.VIEW_TEAM_EXPENSES,
         ],
         hr: [
             PERMISSIONS.MANAGE_USERS,
@@ -83,6 +96,13 @@ module.exports = {
             PERMISSIONS.CREATE_TASKS,
             PERMISSIONS.EDIT_ALL_TASKS,
             PERMISSIONS.DELETE_ALL_TASKS,
+            PERMISSIONS.MANAGE_SKILLS,
+            PERMISSIONS.MANAGE_REVIEWS,
+            PERMISSIONS.MANAGE_REFERRALS,
+            PERMISSIONS.MANAGE_EXPENSES,
+            PERMISSIONS.VIEW_TEAM_EXPENSES,
+            PERMISSIONS.MANAGE_SURVEYS,
+            PERMISSIONS.VIEW_SURVEYS,
         ],
         "super-admin": SUPER_ADMIN_PERMISSIONS,
     },

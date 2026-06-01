@@ -6,6 +6,11 @@ const LeaveSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
+    leavePolicy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'LeavePolicy',
+        required: [true, 'A leave type must be specified'],
+    },
     startDate: {
         type: Date,
         required: [true, 'Please provide a start date'],
@@ -22,6 +27,14 @@ const LeaveSchema = new mongoose.Schema({
         type: String,
         enum: ['Pending', 'Approved', 'Denied', 'Withdrawn'],
         default: 'Pending',
+    },
+    attachments: [{ 
+        fileName: String,
+        filePath: String, 
+    }],
+    approvedBy: { 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
     },
     managerNotes: { 
         type: String,

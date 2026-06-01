@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 
 // Ant Design
 import { ConfigProvider } from 'antd';
+import { SocketProvider } from './context/SocketContext';
 import 'antd/dist/reset.css';
 
 // Redux
@@ -28,7 +29,9 @@ root.render(
     <Provider store={store}>
       <BrowserRouter>
         <ConfigProvider>
-          <App />
+           <SocketProvider>
+            <App />
+           </SocketProvider>
         </ConfigProvider>
       </BrowserRouter>
     </Provider>

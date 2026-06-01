@@ -19,26 +19,33 @@ export const fetchTeamLeaveRequests = createAsyncThunk(
 );
 
 /**
- * @desc    Updates the status of a specific leave request.
- * @param   {object} { leaveId, status } - The ID of the leave and the new status ('Approved' or 'Denied').
+ * @desc    Updates the status and notes of a specific leave request.
+ * @param   {object} payload - Contains { leaveId, status, managerNotes }.
  */
 export const updateTeamLeaveRequest = createAsyncThunk(
   'manager/updateTeamLeaveRequest',
-  async ({ leaveId, status }, thunkAPI) => {
+  // --- THE FIX: Destructure managerNotes from the payload ---
+  async (payload, thunkAPI) => {
     try {
-      const { data } = await api.put(`/manager/leave-requests/${leaveId}`, { status });
+      const { leaveId, status, managerNotes } = payload;
+      
+      // --- THE FIX: Send both status and managerNotes in the request body ---
+      const { data } = await api.put(`/manager/leave-request/${leaveId}`, { status, managerNotes });
       
       // After successfully updating, re-fetch the list to show the change.
       thunkAPI.dispatch(fetchTeamLeaveRequests());
       
       return data.data; // Return the updated leave object
-    } catch (error) {
+    } catch (error)
+     {
       const message =
         (error.response?.data?.message) || error.message || error.toString();
       return thunkAPI.rejectWithValue(message);
     }
   }
-)
+);
+
+
 /**
  * @desc    Fetches the list of a manager's direct reports.
  */

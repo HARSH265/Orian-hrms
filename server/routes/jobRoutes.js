@@ -5,7 +5,8 @@ const {
     updateJob,
     deleteJob
 } = require('../controllers/jobController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
@@ -16,9 +17,9 @@ router.use(protect);
 router.route('/').get(getAllJobs);
 
 // Create, Update, Delete are admin-only
-router.route('/').post(authorize('hr', 'super-admin'), createJob);
+router.route('/').post(checkPermissions(PERMISSIONS.MANAGE_JOBS), createJob);
 router.route('/:id')
-    .put(authorize('hr', 'super-admin'), updateJob)
-    .delete(authorize('hr', 'super-admin'), deleteJob);
+    .put(checkPermissions(PERMISSIONS.MANAGE_JOBS), updateJob)
+    .delete(checkPermissions(PERMISSIONS.MANAGE_JOBS), deleteJob);
 
 module.exports = router;

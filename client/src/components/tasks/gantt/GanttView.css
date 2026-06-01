@@ -1,0 +1,120 @@
+/* In: client/src/components/tasks/gantt/GanttView.css */
+
+.gantt-container {
+    height: calc(100vh - 340px);
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    background-color: #fff;
+}
+
+.gantt-header {
+    display: flex;
+    position: sticky;
+    top: 0;
+    background-color: #fafafa;
+    z-index: 10;
+    font-weight: 500;
+    border-bottom: 1px solid #f0f0f0;
+    min-height: 30px;
+}
+
+.gantt-header-side {
+    width: 250px;
+    min-width: 250px;
+    padding: 8px 12px;
+    border-right: 1px solid #f0f0f0;
+    box-sizing: border-box;
+}
+
+.gantt-header-main {
+    flex-grow: 1;
+    position: relative;
+}
+
+.gantt-month-marker {
+    position: absolute;
+    height: 100%;
+    border-left: 1px dashed #d9d9d9;
+    padding-left: 4px;
+    font-size: 12px;
+    color: #8c8c8c;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.gantt-body {
+    flex-grow: 1;
+    position: relative;
+}
+
+/* --- NEW: Styling for the 'Today' marker --- */
+.gantt-today-marker {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #ff4d4f; /* A prominent red */
+    z-index: 5;
+    opacity: 0.7;
+}
+
+.gantt-row {
+    display: flex;
+    min-height: 40px;
+}
+
+.gantt-row:not(:last-child) {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.gantt-row-side {
+    width: 250px;
+    min-width: 250px;
+    padding: 0 12px;
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.gantt-row-main {
+    flex-grow: 1;
+    position: relative;
+    padding: 8px 0;
+}
+
+/* --- NEW: Wrapper for the bar for better positioning and interaction --- */
+.gantt-bar-wrapper {
+    position: absolute;
+    height: 22px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: box-shadow 0.2s ease;
+}
+
+.gantt-bar-wrapper:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 6; /* Bring to front on hover */
+}
+
+/* --- NEW: Inner bar for showing progress --- */
+.gantt-bar-progress {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease-in-out;
+}
+
+/* Priority Colors (now applied to the inner progress bar) */
+.gantt-priority-high { background-color: #f5222d; }
+.gantt-priority-medium { background-color: #faad14; }
+.gantt-priority-low { background-color: #1890ff; }
+
+/* The outer bar wrapper gets a lighter background */
+.gantt-priority-high { background-color: #fff1f0; border: 1px solid #ffccc7; }
+.gantt-priority-medium { background-color: #fff7e6; border: 1px solid #ffe7ba; }
+.gantt-priority-low { background-color: #e6f7ff; border: 1px solid #bae0ff; }

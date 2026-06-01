@@ -1,51 +1,111 @@
-import React from 'react';
-import { Upload, message, Button } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Upload, message, Button, Space, Typography, Spin } from 'antd';
+import { UploadOutlined, PaperClipOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
+import api from '../services/api';
 
-// This is a reusable component that takes a callback function.
-// When an upload is successful, it calls the callback with the file path.
-const FileUpload = ({ onUploadSuccess }) => {
+const { Text } = Typography;
+
+const FileUpload = ({ onUploadSuccess, onRemove, disabled = false }) => {
     const { token } = useSelector((state) => state.auth);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [fileInfo, setFileInfo] = useState(null);
+
+    const handleRemove = async () => {
+        if (!fileInfo || !fileInfo.public_id) {
+            console.error("Remove failed: fileInfo.public_id is missing.", fileInfo);
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await api.delete('/upload', { data: { public_id: fileInfo.public_id } });
+            message.success('File removed successfully.');
+            setFileInfo(null);
+            if (onRemove) onRemove();
+        } catch (error) {
+            message.error('Could not remove the file. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const props = {
-        name: 'file', // This MUST match the name in our multer middleware: upload.single('file')
-        action: 'http://localhost:5001/api/upload', // The API endpoint for uploads
-        headers: {
-            Authorization: `Bearer ${token}`, // Send the auth token with the upload request
-        },
+        name: 'file',
+        action: '/api/upload',
+        headers: { Authorization: `Bearer ${token}` },
         multiple: false,
+        showUploadList: false,
+
         beforeUpload: (file) => {
-            const isJpgOrPngOrPdf = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'application/pdf';
-            if (!isJpgOrPngOrPdf) {
+            setIsUploading(true);
+            const isAllowedType = ['image/jpeg', 'image/png', 'application/pdf'].includes(file.type);
+            if (!isAllowedType) {
                 message.error('You can only upload JPG, PNG, or PDF files!');
+                setIsUploading(false);
             }
             const isLt10M = file.size / 1024 / 1024 < 10;
             if (!isLt10M) {
                 message.error('File must be smaller than 10MB!');
+                setIsUploading(false);
             }
-            return isJpgOrPngOrPdf && isLt10M;
+            return isAllowedType && isLt10M;
         },
+
         onChange(info) {
-            if (info.file.status === 'uploading') {
-                // You can add a loading state here if you want
-            }
             if (info.file.status === 'done') {
-                message.success(`${info.file.name} file uploaded successfully`);
-                // When the upload is finished, call the parent component's function
-                // and pass it the URL of the uploaded file.
-                if (info.file.response && info.file.response.filePath) {
-                    onUploadSuccess(info.file.response.filePath);
+                setIsUploading(false);
+                // --- ADD THIS DEBUG LOG ---
+                console.log("Server Response on Upload:", info.file.response); 
+                // --- END DEBUG LOG ---
+
+                if (info.file.response && info.file.response.success) {
+                    message.success(`${info.file.name} file uploaded successfully`);
+                    const { filePath, public_id } = info.file.response;
+                    
+                    if (!public_id) {
+                        console.error("Upload succeeded, but public_id was not received from the server!");
+                        message.error("Upload succeeded, but an error occurred. Please try again.");
+                        return;
+                    }
+
+                    setFileInfo({ name: info.file.name, url: filePath, public_id: public_id });
+                    onUploadSuccess(filePath);
+                } else {
+                    message.error(info.file.response?.message || 'Upload failed.');
                 }
             } else if (info.file.status === 'error') {
+                setIsUploading(false);
                 message.error(`${info.file.name} file upload failed.`);
             }
         },
     };
 
+    if (fileInfo) {
+        return (
+            <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '8px 12px' }}>
+                <Space>
+                    {isDeleting ? <Spin size="small" /> : <PaperClipOutlined />}
+                    <Text>{fileInfo.name}</Text>
+                    <Button 
+                        type="text" 
+                        danger 
+                        icon={<CloseCircleOutlined />} 
+                        onClick={handleRemove}
+                        disabled={disabled || isDeleting}
+                        loading={isDeleting}
+                    />
+                </Space>
+            </div>
+        );
+    }
+
     return (
-        <Upload {...props}>
-            <Button icon={<UploadOutlined />}>Click to Upload</Button>
+        <Upload {...props} disabled={disabled || !token}>
+            <Button icon={<UploadOutlined />} loading={isUploading} disabled={disabled || !token}>
+                {isUploading ? 'Uploading...' : 'Click to Upload'}
+            </Button>
         </Upload>
     );
 };

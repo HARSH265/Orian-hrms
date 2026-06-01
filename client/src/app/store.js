@@ -16,7 +16,17 @@ import notificationReducer from '../features/notification/notificationSlice';
 import reportReducer from '../features/report/reportSlice';
 import directoryReducer from '../features/directory/directorySlice';
 import dashboardReducer from '../features/dashboard/dashboardSlice';
-
+import reviewReducer from '../features/review/reviewSlice';
+import attendanceReducer from '../features/attendance/attendanceSlice';
+import skillReducer from '../features/skill/skillSlice';
+import leavePolicyReducer from '../features/leave-policy/leavePolicySlice'; // <-- IMPORT
+import kudosReducer from '../features/kudos/kudosSlice';
+import surveyReducer from '../features/survey/surveySlice';
+import documentReducer from '../features/document/documentSlice';
+import settingsReducer from '../features/settings/settingsSlice';
+import chatReducer from '../features/chat/chatSlice';
+import customFieldReducer from '../features/customFields/customFieldSlice'; 
+import roleReducer from '../features/roles/roleSlice'; 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -36,5 +46,16 @@ export const store = configureStore({
         report: reportReducer,
         directory: directoryReducer,
         dashboard: dashboardReducer,
+        review: reviewReducer,
+        attendance: attendanceReducer,
+        skill: skillReducer,
+        leavePolicy: leavePolicyReducer,
+        kudos: kudosReducer,
+         survey: surveyReducer,
+         document: documentReducer,
+         settings: settingsReducer,
+         chat: chatReducer,
+          customFields: customFieldReducer,
+           roles: roleReducer,
   },
 });

@@ -15,12 +15,12 @@ export const fetchMyNotifications = createAsyncThunk(
 
 export const markNotificationAsRead = createAsyncThunk(
   'notification/markAsRead',
-  async (notificationId, { dispatch, rejectWithValue }) => {
+  async (notificationId, { rejectWithValue }) => {
     try {
-      await api.put(`/notifications/${notificationId}/read`);
-      // After marking as read, we can either re-fetch the list or update the state locally.
-      // For simplicity, let's re-fetch.
-      dispatch(fetchMyNotifications());
+      // --- CHANGE: The API call now returns the updated notification ---
+      const { data } = await api.put(`/notifications/${notificationId}/read`);
+      // Return the updated notification object as the payload
+      return data.data; 
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }

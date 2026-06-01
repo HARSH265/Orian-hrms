@@ -1,8 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchDirectoryUsers, fetchOrgChartData } from './directoryThunks';
+import { fetchDirectoryUsers, fetchOrgChartData, fetchAllUsers } from './directoryThunks';
 
 const initialState = {
   users: [],
+  allUsers: [],
   orgChartData: [],
   status: 'idle',
   error: null,
@@ -29,6 +30,17 @@ const directorySlice = createSlice({
         state.orgChartData = action.payload;
       })
       .addCase(fetchOrgChartData.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.allUsers = action.payload;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       });

@@ -1,11 +1,12 @@
 const Expense = require('../model/expense.model');
 const User = require('../model/user');
 const { createNotification } = require('../services/notificationService');
+const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Submit a new expense claim
 // @route   POST /api/expenses
 // @access  Private (Employee)
-exports.submitExpense = async (req, res, next) => {
+exports.submitExpense = asyncHandler(async (req, res, next) => {
     try {
         const { date, category, amount, description } = req.body;
         const employee = req.user.id;
@@ -19,33 +20,33 @@ exports.submitExpense = async (req, res, next) => {
                 message: `${employee.name} submitted an expense claim for $${amount}.`,
                 link: '/expenses/approvals', // Link to the approval page
                 type: 'Expense',
-            });
+            },req);
         }
 
         res.status(201).json({ success: true, data: expense });
     } catch (error) {
         next(error);
     }
-};
+    });
 
 // @desc    Get the logged-in user's expense history
 // @route   GET /api/expenses/my-expenses
 // @access  Private (Employee)
-exports.getMyExpenses = async (req, res, next) => {
+exports.getMyExpenses = asyncHandler(async (req, res, next) => {
     try {
         const expenses = await Expense.find({ employee: req.user.id }).sort({ date: -1 });
         res.status(200).json({ success: true, count: expenses.length, data: expenses });
     } catch (error) {
         next(error);
     }
-};
+    });
 
 // --- MANAGER FUNCTIONS ---
 
 // @desc    Get all expense claims for the manager's team
 // @route   GET /api/expenses/team-expenses
 // @access  Private (Manager+)
-exports.getTeamExpenses = async (req, res, next) => {
+exports.getTeamExpenses = asyncHandler(async (req, res, next) => {
     try {
         const teamMembers = await User.find({ manager: req.user.id }).select('_id');
         const teamMemberIds = teamMembers.map(member => member._id);
@@ -58,12 +59,12 @@ exports.getTeamExpenses = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-};
+    });
 
 // @desc    Update the status of an expense claim (Approve/Deny)
 // @route   PUT /api/expenses/:id/status
 // @access  Private (Manager+)
-exports.updateExpenseStatus = async (req, res, next) => {
+exports.updateExpenseStatus = asyncHandler(async (req, res, next) => {
     try {
         const { status, managerNotes } = req.body;
         if (!['Approved', 'Denied'].includes(status)) {
@@ -99,13 +100,13 @@ exports.updateExpenseStatus = async (req, res, next) => {
             message: `Your expense claim for $${expense.amount} has been ${status.toLowerCase()}.`,
             link: '/expenses',
             type: 'Expense',
-        });
+        },req);
 
         res.status(200).json({ success: true, data: expense });
     } catch (error) {
         next(error);
     }
-};
+    });
 
 // ... at the end of the file ...
 
@@ -114,7 +115,7 @@ exports.updateExpenseStatus = async (req, res, next) => {
  * @route   GET /api/expenses/all
  * @access  Private (HR, Super-Admin)
  */
-exports.getAllExpenses = async (req, res, next) => {
+exports.getAllExpenses = asyncHandler(async (req, res, next) => {
     try {
         const allExpenses = await Expense.find({})
             .populate('employee', 'name email')

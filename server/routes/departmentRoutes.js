@@ -6,18 +6,19 @@ const {
     deleteDepartment 
 } = require('../controllers/departmentController');
 
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
 // The GET route is accessible to any logged-in user
 router.route('/')
     .get(protect, getAllDepartments)
-    .post(protect, authorize('hr', 'super-admin'), createDepartment);
+    .post(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), createDepartment);
 
 // The PUT and DELETE routes are only for admins
 router.route('/:id')
-    .put(protect, authorize('hr', 'super-admin'), updateDepartment)
-    .delete(protect, authorize('hr', 'super-admin'), deleteDepartment);
+    .put(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), updateDepartment)
+    .delete(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), deleteDepartment);
 
 module.exports = router;

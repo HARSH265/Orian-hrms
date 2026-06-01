@@ -1,59 +1,57 @@
-import  { useEffect } from 'react';
+import React, { useEffect } from 'react'; // <-- Add React
 import { useDispatch, useSelector } from 'react-redux';
-import {  Spin, Statistic, Row, Col, Card } from 'antd'; // Make sure Card is imported
+import { Spin, Statistic, Row, Col, Card, Typography } from 'antd';
 import { Link } from 'react-router-dom';
-// Import ALL the thunks we might need
 import { fetchTeamLeaveRequests } from '../../features/manager/managerThunks';
 import { fetchTeamExpenses } from '../../features/expense/expenseThunks';
 import { fetchAllSystemLeaves } from '../../features/admin-leaves/adminLeavesThunks';
 import { fetchAllSystemExpenses } from '../../features/expense/expenseThunks';
 
+const { Title } = Typography; // <-- Add Title for consistency
+
 const PendingApprovals = () => {
     const dispatch = useDispatch();
-    
-    // --- 1. GET THE LOGGED-IN USER'S ROLE ---
     const { user } = useSelector((state) => state.auth);
 
-    // --- 2. SELECT THE CORRECT DATA SOURCE BASED ON ROLE ---
-    const { leaves, leavesStatus } = useSelector((state) => {
-        const isManager = user.role === 'manager';
-        return {
-            leaves: isManager ? state.manager.teamLeaveRequests : state.adminLeaves.allLeaves,
-            leavesStatus: isManager ? state.manager.status : state.adminLeaves.status,
-        };
-    });
+    // This is good, but let's make it safer.
+    const isManagerOrAdmin = user?.role === 'manager' || user?.role === 'hr' || user?.role === 'super-admin';
+    const isAdmin = user?.role === 'hr' || user?.role === 'super-admin';
 
-    const { expenses, expensesStatus } = useSelector((state) => {
-        const isManager = user.role === 'manager';
-        return {
-            expenses: isManager ? state.expense.teamExpenses : state.expense.allExpenses,
-            expensesStatus: isManager ? state.expense.status : state.expense.status, // Status can be shared for simplicity
-        };
-    });
+    const { leaves, leavesStatus } = useSelector((state) => ({
+        leaves: isAdmin ? state.adminLeaves.allLeaves : state.manager.teamLeaveRequests,
+        leavesStatus: isAdmin ? state.adminLeaves.status : state.manager.status,
+    }));
 
-    // --- 3. FETCH THE CORRECT DATA BASED ON ROLE ---
+    const { expenses, expensesStatus } = useSelector((state) => ({
+        expenses: isAdmin ? state.expense.allExpenses : state.expense.teamExpenses,
+        expensesStatus: state.expense.status,
+    }));
+
     useEffect(() => {
-        if (user.role === 'hr' || user.role === 'super-admin') {
+        if (!user) return; // Guard clause
+
+        if (isAdmin) {
             dispatch(fetchAllSystemLeaves());
             dispatch(fetchAllSystemExpenses());
         } else if (user.role === 'manager') {
             dispatch(fetchTeamLeaveRequests());
             dispatch(fetchTeamExpenses());
         }
-    }, [dispatch, user.role]);
+    }, [dispatch, user]); // <-- useEffect should depend on user object
 
-    // Filter the selected data for pending items
     const pendingLeaves = leaves.filter(req => req.status === 'Pending');
     const pendingExpenses = expenses.filter(req => req.status === 'Pending');
+    
+    // Better loading check
+    if ((leavesStatus === 'loading' || expensesStatus === 'loading') && (pendingLeaves.length === 0 && pendingExpenses.length === 0)) {
+        return <Card title={<Title level={4}>Pending Approvals</Title>}><Spin /></Card>;
+    }
 
-    if (leavesStatus === 'loading' || expensesStatus === 'loading') return <Spin />;
-
-    // --- 4. LINK TO THE CORRECT APPROVAL PAGE BASED ON ROLE ---
-    const leaveLink = (user.role === 'hr' || user.role === 'super-admin') ? '/admin/leaves' : '/team';
-    const expenseLink = (user.role === 'hr' || user.role === 'super-admin') ? '/admin/expenses' : '/team/expenses';
+    const leaveLink = isAdmin ? '/admin/leaves' : '/team';
+    const expenseLink = isAdmin ? '/admin/expenses' : '/team/expenses';
 
     return (
-        <Card title="Pending Approvals">
+        <Card title={<Title level={4}>Pending Approvals</Title>}>
             <Row gutter={16}>
                 <Col span={12}>
                     <Link to={leaveLink}>

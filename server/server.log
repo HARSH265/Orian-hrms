@@ -1,0 +1,4 @@
+[dotenv@17.2.1] injecting env (11) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+Server running in development mode on port 5004
+MongoDB Connected: localhost

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Badge, Popover, List, Typography, Spin } from 'antd';
 import { BellOutlined } from '@ant-design/icons';
@@ -10,45 +10,63 @@ const { Text } = Typography;
 const NotificationBell = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { notifications, unreadCount, status } = useSelector((state) => state.notification);
+    const { notifications, status } = useSelector((state) => state.notification);
+
+    // 🔹 Local state for only unread notifications
+    const [visibleNotifications, setVisibleNotifications] = useState([]);
 
     useEffect(() => {
-        // Fetch notifications when the component mounts
+        // Fetch notifications initially
         dispatch(fetchMyNotifications());
 
-        // Optional: Poll for new notifications every minute
+        // Poll every 60 sec
         const interval = setInterval(() => {
             dispatch(fetchMyNotifications());
         }, 60000);
 
-        return () => clearInterval(interval); // Cleanup on unmount
+        return () => clearInterval(interval);
     }, [dispatch]);
 
+    // 🔹 Sync only unread notifications
+    useEffect(() => {
+        const unread = notifications.filter(n => !n.isRead);
+        setVisibleNotifications(unread);
+    }, [notifications]);
+
     const handleNotificationClick = (notification) => {
-        // Mark as read if it's not already
         if (!notification.isRead) {
             dispatch(markNotificationAsRead(notification._id));
         }
-        // Navigate to the associated link
+
+        // Navigate to notification link
         navigate(notification.link);
+
+        // 🔹 Remove from UI immediately (not from DB)
+        setVisibleNotifications(prev =>
+            prev.filter(n => n._id !== notification._id)
+        );
     };
 
     const notificationContent = (
         <List
             itemLayout="horizontal"
-            dataSource={notifications}
-            style={{ width: 350 }}
+            dataSource={visibleNotifications}
+            style={{ 
+                width: 350, 
+                maxHeight: 400,     // 🔹 Fix height
+                overflowY: 'auto'   // 🔹 Scroll enabled
+            }}
             locale={{ emptyText: "No new notifications" }}
             renderItem={item => (
                 <List.Item
                     onClick={() => handleNotificationClick(item)}
                     style={{ 
                         cursor: 'pointer', 
-                        backgroundColor: item.isRead ? 'transparent' : '#e6f7ff' 
+                        backgroundColor: '#e6f7ff' 
                     }}
                 >
                     <List.Item.Meta
-                        title={<Text strong={!item.isRead}>{item.message}</Text>}
+                        title={<Text strong>{item.message}</Text>}
                         description={new Date(item.createdAt).toLocaleString()}
                     />
                 </List.Item>
@@ -63,7 +81,7 @@ const NotificationBell = () => {
             trigger="click"
             placement="bottomRight"
         >
-            <Badge count={unreadCount}>
+            <Badge count={visibleNotifications.length}>
                 <BellOutlined style={{ fontSize: '20px', cursor: 'pointer' }} />
             </Badge>
         </Popover>

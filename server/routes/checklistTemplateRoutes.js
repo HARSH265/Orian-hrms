@@ -1,21 +1,32 @@
+// In: server/routes/checklistTemplateRoutes.js
+
 const express = require('express');
 const {
     getAllChecklistTemplates,
     createChecklistTemplate,
-    applyChecklistTemplate
+    applyChecklistTemplate,
+    updateChecklistTemplate,
+    deleteChecklistTemplate
 } = require('../controllers/checklistTemplateController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+// --- THE CHANGE: Import `checkPermissions` and `PERMISSIONS` ---
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// All routes are for admins only
-router.use(protect, authorize('hr', 'super-admin'));
+// All routes require the user to be logged in
+router.use(protect);
 
+// --- THE UPGRADE: Use granular permissions instead of a hardcoded role ---
 router.route('/')
-    .get(getAllChecklistTemplates)
-    .post(createChecklistTemplate);
+    .get(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), getAllChecklistTemplates)
+    .post(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), createChecklistTemplate);
 
 router.route('/apply')
-    .post(applyChecklistTemplate);
+    .post(checkPermissions(PERMISSIONS.APPLY_CHECKLISTS), applyChecklistTemplate);
+
+router.route('/:id')
+    .put(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), updateChecklistTemplate)
+    .delete(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), deleteChecklistTemplate);
 
 module.exports = router;

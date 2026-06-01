@@ -25,12 +25,65 @@ export const createChecklistTemplate = createAsyncThunk(
   }
 );
 
+
 export const applyChecklistTemplate = createAsyncThunk(
   'checklist/applyTemplate',
+  // --- THE FIX: The payload now expects targetUserId to match the backend ---
   async ({ templateId, targetUserId, startDate }, { rejectWithValue }) => {
     try {
       const { data } = await api.post('/checklist-templates/apply', { templateId, targetUserId, startDate });
-      return data.message; // Return the success message from the backend
+      return data.message;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const fetchUserChecklists = createAsyncThunk(
+  'checklist/fetchUserChecklists',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get(`/users/${userId}/checklist-instances`);
+      return data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const fetchActiveChecklists = createAsyncThunk(
+  'checklist/fetchActive',
+  async (_, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/checklist-instances/active');
+      return data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);
+
+export const updateChecklistTemplate = createAsyncThunk(
+  'checklist/updateTemplate',
+  async ({ templateId, templateData }, { dispatch, rejectWithValue }) => {
+    try {
+      // --- THE FIX: templateData is the second argument to api.put ---
+      await api.put(`/checklist-templates/${templateId}`, templateData);
+      dispatch(fetchChecklistTemplates());
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+)
+
+export const deleteChecklistTemplate = createAsyncThunk(
+  'checklist/deleteTemplate',
+  async (templateId, { dispatch, rejectWithValue }) => {
+    try {
+      const { data } = await api.delete(`/checklist-templates/${templateId}`);
+      // Refresh the list after a successful deletion.
+      dispatch(fetchChecklistTemplates());
+      return data.message; // Return success message for notification
     } catch (error) {
       return rejectWithValue(error.response?.data?.message);
     }

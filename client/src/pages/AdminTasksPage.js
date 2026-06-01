@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Table, Card, Typography, Tag, Button, Modal, Form, Input, Select, DatePicker, message } from 'antd';
 import { fetchAllTasks, createTask } from '../features/task/taskThunks';
 import { fetchAllUsers } from '../features/admin/adminThunks';
+import TaskDetailsModal from '../components/tasks/TaskDetailsModal';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -10,6 +11,8 @@ const { Option } = Select;
 const AdminTasksPage = () => {
     const dispatch = useDispatch();
     const [isModalVisible, setIsModalVisible] = useState(false);
+     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+      const [selectedTask, setSelectedTask] = useState(null); 
     const [form] = Form.useForm();
     
     const { allTasks, status } = useSelector((state) => state.task);
@@ -32,8 +35,23 @@ const AdminTasksPage = () => {
             .catch((err) => message.error(err));
     };
 
+     const showDetailsModal = (task) => {
+        setSelectedTask(task);
+        setIsDetailsModalOpen(true);
+    };
+    const handleDetailsCancel = () => {
+        setIsDetailsModalOpen(false);
+        setSelectedTask(null);
+    };
+
     const columns = [
-        { title: 'Task', dataIndex: 'title', key: 'title', sorter: (a, b) => a.title.localeCompare(b.title) },
+         { 
+            title: 'Task', 
+            dataIndex: 'title', 
+            key: 'title', 
+            sorter: (a, b) => a.title.localeCompare(b.title),
+            render: (text, record) => <a onClick={() => showDetailsModal(record)}>{text}</a>
+        },
         { title: 'Creator', dataIndex: ['creator', 'name'], key: 'creator' },
         { title: 'Assignee', dataIndex: ['assignee', 'name'], key: 'assignee' },
         { title: 'Status', dataIndex: 'status', key: 'status', render: (status) => <Tag>{status}</Tag> },
@@ -70,6 +88,12 @@ const AdminTasksPage = () => {
                     <Form.Item><Button type="primary" htmlType="submit" loading={status === 'loading'}>Assign Task</Button></Form.Item>
                 </Form>
             </Modal>
+
+            <TaskDetailsModal
+                open={isDetailsModalOpen}
+                onCancel={handleDetailsCancel}
+                task={selectedTask}
+            />
         </>
     );
 };

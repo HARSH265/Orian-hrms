@@ -1,138 +1,133 @@
 // controllers/userController.js
 const User = require('../model/user');
+const ChecklistInstance = require('../model/checklistInstance.model');
+const { applyChecklist } = require('../services/checklistService')
+const { createAuditLog } = require('../services/auditLogService');
+const Settings = require('../model/Settings');
+const userService = require('../services/userService');
+
+const asyncHandler = require('../utils/asyncHandler');
 
 // @desc    Create a new user
 // @route   POST /api/users
 // @access  Private/Admin
-exports.createUser = async (req, res, next) => {
-    try {
-        const { name, email, password, role, jobTitle, department } = req.body;
-
-        const userExists = await User.findOne({ email });
-        if (userExists) {
-            return res.status(400).json({ success: false, message: 'User already exists' });
-        }
-
-        // We don't generate tokens here. The user will log in themselves later.
-        const user = await User.create({ name, email, password, role, jobTitle, department });
-        
-        res.status(201).json({ success: true, data: user });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.createUser = asyncHandler(async (req, res) => {
+    const user = await userService.createUser(req.body, req.user.id, req.ip);
+    res.status(201).json({ success: true, data: user });
+});
 
 // @desc    Update current user's self-service profile
 // @route   PUT /api/users/profile
 // @access  Private
-exports.updateProfile = async (req, res, next) => {
-    try {
-        // Only allow updating non-sensitive, self-service fields
-        const { name, address, phone, emergencyContact, profilePictureUrl } = req.body;
-        
-        const updates = { name, address, phone, emergencyContact, profilePictureUrl };
-        
-        const user = await User.findByIdAndUpdate(req.user.id, updates, {
-            new: true, // Return the updated document
-            runValidators: true,
-        });
-
-        res.status(200).json({ success: true, data: user });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.updateProfile = asyncHandler(async (req, res) => {
+    const updatedUser = await userService.updateProfile(req);
+    res.status(200).json({ success: true, data: updatedUser });
+});
 
 // @desc    Get current user profile
 // @route   GET /api/users/profile
 // @access  Private
-exports.getProfile = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.user.id)
-            .populate('department', 'name') // This one is for the department name
-            .populate('manager', 'name');   // <-- ADD THIS LINE to get the manager's name
+exports.getProfile = asyncHandler(async (req, res) => {
+    const user = await userService.getProfile(req);
+    res.status(200).json({ success: true, data: user });
+});
 
+
+// We should also add a dedicated getUserById for admins that does the same
+// @desc    Get a single user by ID (for Admins)
+// @route   GET /api/users/:id
+exports.getUserById = asyncHandler(async (req, res, next) => {
+    try {
+        const user = await userService.getUserById(req.params.id);
         res.status(200).json({ success: true, data: user });
     } catch (error) {
         next(error);
     }
-};
+});
 
 // @desc    Get all users (for admins)
 // @route   GET /api/users
 // @access  Private/Admin
 // Make sure your getAllUsers function looks like this
-exports.getAllUsers = async (req, res, next) => {
+exports.getAllUsers = asyncHandler(async (req, res, next) => {
     try {
-        // --- THIS IS THE FIX ---
-        // We get ALL users EXCEPT the one making the request.
-        const users = await User.find({ _id: { $ne: req.user.id } })
-            .populate('department', 'name')
-            .populate('manager', 'name');
-        // --- END OF FIX ---
-            
-        res.status(200).json({ success: true, count: users.length, data: users });
+        const { users, total, page, limit } = await userService.getAllUsers(req.query);
+        res.status(200).json({
+            success: true,
+            count: users.length,
+            pagination: {
+                total,
+                page,
+                pages: Math.ceil(total / limit)
+            },
+            data: users
+        });
     } catch (error) {
         next(error);
     }
-};
+});
 
 /**
  * @desc    Update a user's details (by Admin)
  * @route   PUT /api/users/:id
  * @access  Private/Admin
  */
-exports.updateUserById = async (req, res, next) => {
+
+exports.updateUserById = asyncHandler(async (req, res, next) => {
     try {
-        // We get the user ID from the URL parameters
-        const userId = req.params.id;
-        
-        // We get the data to update from the request body
-        // This can include role, department, jobTitle, manager, isActive, etc.
-        const updates = req.body;
-
-        // Find the user by their ID and update them with the new data
-        // { new: true } ensures the updated document is returned
-        // { runValidators: true } ensures any model validations are run
-        const updatedUser = await User.findByIdAndUpdate(userId, updates, {
-            new: true,
-            runValidators: true,
-        });
-
-        if (!updatedUser) {
-            return res.status(404).json({ success: false, message: `User not found with id of ${userId}` });
-        }
-
+        const updatedUser = await userService.updateUser(req.params.id, req.body, req.user.id, req.ip);
         res.status(200).json({ success: true, data: updatedUser });
     } catch (error) {
         next(error);
     }
-};
+});
 
 /**
  * @desc    Deactivate a user (soft delete)
  * @route   DELETE /api/users/:id
  * @access  Private/Admin
  */
-exports.deactivateUser = async (req, res, next) => {
+exports.deactivateUser = asyncHandler(async (req, res, next) => {
     try {
         const userId = req.params.id;
-
-        // Instead of deleting, we find the user and set their 'isActive' flag to false
-        const deactivatedUser = await User.findByIdAndUpdate(userId, { isActive: false }, {
-            new: true,
-        });
-        
-        if (!deactivatedUser) {
-            return res.status(404).json({ success: false, message: `User not found with id of ${userId}` });
+        const userToDeactivate = await User.findById(userId);
+        if (!userToDeactivate) {
+            return res.status(404).json({ success: false, message: `User not found` });
         }
 
-        // We send a success message but no data (204 No Content could also be used)
-        res.status(200).json({ success: true, message: 'User deactivated successfully' });
+        // --- THE AUTOMATION LOGIC ---
+        const settings = await Settings.findOne({ singleton: 'main_settings' });
+        if (settings && settings.offboardingTemplateId) {
+            console.log(`Offboarding checklist found (${settings.offboardingTemplateId}). Applying to user ${userToDeactivate.name}...`);
+            await applyChecklist({
+                templateId: settings.offboardingTemplateId,
+                targetUserId: userId,
+                creator: req.user,
+                startDate: new Date(),
+                req
+            });
+            await createAuditLog({
+                actor: req.user.id,
+                action: 'OFFBOARDING_INITIATED',
+                target: { id: userId, type: 'User' },
+                details: { templateId: settings.offboardingTemplateId }
+            });
+        } else {
+            console.log("No default offboarding checklist configured in settings. Skipping automation.");
+        }
+
+        // Use service to deactivate (sets isActive, logs audit)
+        await userService.deactivateUser(userId, req.user.id, req.ip);
+
+        res.status(200).json({
+            success: true,
+            message: 'User deactivated successfully. Offboarding process initiated.',
+            data: { deactivatedUserId: userId }
+        });
     } catch (error) {
         next(error);
     }
-};
+});
 
 
 /**
@@ -140,25 +135,60 @@ exports.deactivateUser = async (req, res, next) => {
  * @route   GET /api/users/managers
  * @access  Private/Admin
  */
-exports.getManagerUsers = async (req, res, next) => {
-    try {
-        // Find all users whose role is one of the manager-level roles
-        const managers = await User.find({ role: { $in: ['manager', 'hr', 'super-admin'] } }).select('name');
-        res.status(200).json({ success: true, data: managers });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.getManagerUsers = asyncHandler(async (req, res) => {
+    const managers = await userService.getManagerUsers();
+    res.status(200).json({ success: true, data: managers });
+});
 /**
  * @desc    Mark the welcome wizard as complete for the logged-in user
  * @route   PUT /api/users/complete-wizard
  * @access  Private
  */
-exports.completeWelcomeWizard = async (req, res, next) => {
+exports.completeWelcomeWizard = asyncHandler(async (req, res) => {
+    const result = await userService.completeWelcomeWizard(req);
+    res.status(200).json({ success: true, message: result.message });
+});
+
+// ... at the end of the file ...
+
+// @desc    Add a skill to the logged-in user's profile
+// @route   POST /api/users/profile/skills
+exports.addSkillToProfile = asyncHandler(async (req, res, next) => {
     try {
-        await User.findByIdAndUpdate(req.user.id, { needsWelcomeWizard: false });
-        res.status(200).json({ success: true, message: 'Welcome wizard completed.' });
-    } catch (error) {
-        next(error);
-    }
-};
+        const { skillId, proficiency } = req.body;
+        const user = await User.findById(req.user.id);
+        // Check if the user already has this skill
+        if (user.skills.some(s => s.skill.toString() === skillId)) {
+            return res.status(400).json({ success: false, message: 'You already have this skill on your profile.' });
+        }
+        user.skills.push({ skill: skillId, proficiency: proficiency });
+        await user.save();
+        res.status(200).json({ success: true, data: user.skills });
+    } catch (error) { next(error); }
+});
+
+// @desc    Remove a skill from the logged-in user's profile
+// @route   DELETE /api/users/profile/skills/:skillId
+exports.removeSkillFromProfile = asyncHandler(async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id);
+        user.skills = user.skills.filter(s => s.skill.toString() !== req.params.skillId);
+        await user.save();
+        res.status(200).json({ success: true, data: user.skills });
+    } catch (error) { next(error); }
+});
+
+// @desc    Endorse a skill for another user
+// @route   POST /api/users/:userId/skills/:skillId/endorse
+exports.endorseSkill = asyncHandler(async (req, res) => {
+    const skills = await userService.endorseSkill(req);
+    res.status(200).json({ success: true, data: skills });
+});
+
+// @desc    Get all checklist instances for a specific user
+// @route   GET /api/users/:id/checklist-instances
+// @access  Private (Manager, HR, Admin)
+exports.getUserChecklistInstances = asyncHandler(async (req, res) => {
+    const instances = await userService.getUserChecklistInstances(req);
+    res.status(200).json({ success: true, data: instances });
+});

@@ -6,7 +6,8 @@ const {
     updateExpenseStatus,
     getAllExpenses
 } = require('../controllers/expenseController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
@@ -18,10 +19,10 @@ router.route('/').post(submitExpense);
 router.route('/my-expenses').get(getMyExpenses);
 
 // --- the new admin route ---
-router.route('/all').get(authorize('hr', 'super-admin'), getAllExpenses);
+router.route('/all').get(checkPermissions(PERMISSIONS.MANAGE_EXPENSES), getAllExpenses);
 
 // --- Manager & Admin Routes ---
-router.route('/team-expenses').get(authorize('manager', 'hr', 'super-admin'), getTeamExpenses);
-router.route('/:id/status').put(authorize('manager', 'hr', 'super-admin'), updateExpenseStatus);
+router.route('/team-expenses').get(checkPermissions(PERMISSIONS.VIEW_TEAM_EXPENSES), getTeamExpenses);
+router.route('/:id/status').put(checkPermissions(PERMISSIONS.MANAGE_EXPENSES), updateExpenseStatus);
 
 module.exports = router;

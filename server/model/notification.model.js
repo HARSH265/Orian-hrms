@@ -18,7 +18,7 @@ const NotificationSchema = new mongoose.Schema({
     },
     type: { // To categorize notifications, useful for icons or special handling
         type: String,
-        enum: ['Leave', 'Task', 'Expense', 'Announcement', 'General'],
+        enum: ['Leave', 'Task', 'Expense', 'Announcement', 'General', 'Kudos'],
         default: 'General',
     },
     isRead: {

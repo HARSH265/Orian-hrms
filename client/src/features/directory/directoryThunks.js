@@ -24,3 +24,16 @@ export const fetchOrgChartData = createAsyncThunk(
     }
   }
 );
+
+// --- ADD THIS NEW THUNK TO THE FILE ---
+export const fetchAllUsers = createAsyncThunk(
+  'directory/fetchAllUsers',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/users');
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message);
+    }
+  }
+);

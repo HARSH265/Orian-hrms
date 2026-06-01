@@ -1,40 +1,53 @@
+// In: server/routes/userRoutes.js
+
 const express = require('express');
 const {
-    getProfile,
-    getAllUsers,
-    createUser,
-    updateProfile,
-    updateUserById,
-    deactivateUser,
-    getManagerUsers,
-    completeWelcomeWizard
+    getProfile, getAllUsers, createUser, updateProfile, updateUserById, deactivateUser,
+    getManagerUsers, completeWelcomeWizard, addSkillToProfile, removeSkillFromProfile, 
+    endorseSkill, getUserChecklistInstances, getUserById
 } = require('../controllers/userController');
-const { protect, authorize } = require('../middleware/authMiddleware');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// --- General routes ---
-router.route('/')
-    .get(protect, authorize('hr', 'super-admin'), getAllUsers)
-    .post(protect, authorize('hr', 'super-admin'), createUser);
+// Apply login protection to all routes in this file
+router.use(protect);
 
-// --- Specific, text-based routes MUST come before generic /:id routes ---
+// =======================================================================
+// --- ORDER OF ROUTES IS CRITICAL ---
 
-// GET /api/users/managers
-router.get('/managers', protect, authorize('hr', 'super-admin'), getManagerUsers);
-
-// PUT /api/users/complete-wizard
-router.put('/complete-wizard', protect, completeWelcomeWizard);
-
-// GET and PUT /api/users/profile
+// 1. Most Specific, Static Routes First
+// These do not have any parameters in their path.
 router.route('/profile')
-    .get(protect, getProfile)
-    .put(protect, updateProfile);
+    .get(getProfile)
+    .put(updateProfile);
 
-// --- Generic, wildcard /:id route MUST come LAST ---
-// This will handle routes like /api/users/68948d589453eceac5c64e8a
+router.get('/managers', checkPermissions(PERMISSIONS.MANAGE_USERS), getManagerUsers);
+router.put('/complete-wizard', completeWelcomeWizard);
+router.route('/profile/skills').post(addSkillToProfile);
+
+// 2. Routes with ONE parameter that is NOT an ID at the end
+router.route('/profile/skills/:skillId').delete(removeSkillFromProfile);
+
+// 3. Routes with MULTIPLE parameters
+router.route('/:userId/skills/:skillId/endorse').post(endorseSkill);
+
+// 4. Routes with an ID parameter followed by more text
+router.route('/:id/checklist-instances').get(checkPermissions(PERMISSIONS.VIEW_USER_CHECKLISTS), getUserChecklistInstances);
+
+
+// 5. THE MOST GENERIC ROUTES (Admin User Management) LAST
+// Because `/:id` can match almost anything, it must come after all other specific routes.
+router.route('/')
+    .get(checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getAllUsers)
+    .post(checkPermissions(PERMISSIONS.MANAGE_USERS), createUser);
+
 router.route('/:id')
-    .put(protect, authorize('hr', 'super-admin'), updateUserById)     
-    .delete(protect, authorize('hr', 'super-admin'), deactivateUser); 
+    .get(checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getUserById)
+    .put(checkPermissions(PERMISSIONS.MANAGE_USERS), updateUserById)     
+    .delete(checkPermissions(PERMISSIONS.MANAGE_USERS), deactivateUser); 
+
+// =======================================================================
 
 module.exports = router;

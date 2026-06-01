@@ -1,13 +1,9 @@
 const express = require('express');
-const { getUsersForDirectory, getDataForOrgChart } = require('../controllers/directoryController');
+const router = express.Router();
+const { getChatDirectory } = require('../controllers/directoryController');
 const { protect } = require('../middleware/authMiddleware');
 
-const router = express.Router();
-
-// All directory routes are accessible to any logged-in user
-router.use(protect);
-
-router.get('/users', getUsersForDirectory);
-router.get('/org-chart', getDataForOrgChart);
+// This endpoint will return the list of users the current user is allowed to chat with.
+router.get('/chat-directory', protect, getChatDirectory);
 
 module.exports = router;
