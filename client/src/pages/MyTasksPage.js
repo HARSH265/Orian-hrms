@@ -15,7 +15,7 @@ const MyTasksPage = () => {
     
     // --- Redux State ---
     // We now get a separate pagination object for the "Created Tasks" list
-    const { createdTasks, status, pagination: createdTasksPagination } = useSelector((state) => state.task);
+    const { data: createdTasks, status, pagination: createdTasksPagination } = useSelector((state) => state.task.createdTasks);
     const { user: loggedInUser } = useSelector((state) => state.auth);
     
     // --- Component State ---
