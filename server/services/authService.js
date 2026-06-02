@@ -191,8 +191,10 @@ const changePassword = async (userId, currentPassword, newPassword) => {
         throw new Error('Current password is incorrect');
     }
 
-    if (!User.validatePassword(newPassword)) {
-        throw new Error('New password must be at least 8 characters with uppercase, lowercase, number, and special character');
+    // Validate new password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+        throw new Error('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
     }
 
     user.password = newPassword;
@@ -237,7 +239,9 @@ const resetPassword = async (resetToken, newPassword) => {
         throw new Error('Invalid or expired reset token');
     }
 
-    if (!User.validatePassword(newPassword)) {
+    // Validate new password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
         throw new Error('Password must be at least 8 characters with uppercase, lowercase, number, and special character');
     }
 

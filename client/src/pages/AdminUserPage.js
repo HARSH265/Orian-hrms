@@ -226,7 +226,7 @@ const AdminUserPage = () => {
                                     <>
                                         <Col span={12}><Form.Item name="name" label="Full Name" rules={[{ required: true }]}><Input /></Form.Item></Col>
                                         <Col span={12}><Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}><Input /></Form.Item></Col>
-                                        <Col span={12}><Form.Item name="password" label="Initial Password" rules={[{ required: true, min: 8 }, { pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])/, message: 'Must include uppercase, lowercase, number, and special character' }]}><Input.Password /></Form.Item></Col>
+                                        <Col span={12}><Form.Item name="password" label="Initial Password" rules={[{ required: true, min: 6 }]}><Input.Password /></Form.Item></Col>
                                     </>
                                 )}
                                 <Col span={12}><Form.Item name="jobTitle" label="Job Title"><Input /></Form.Item></Col>

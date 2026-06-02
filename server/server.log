@@ -286,3 +286,20 @@ MongoDB Connected: localhost
 {"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 03:28:21"}
 {"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 03:28:35"}
 {"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 03:28:36"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-02 06:34:37"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-02 06:34:47"}
+{"level":"warn","message":"MongoDB disconnected unexpectedly. Attempting reconnect...","service":"orion-api","timestamp":"2026-06-02 06:35:38"}
+{"level":"info","message":"MongoDB reconnected successfully.","service":"orion-api","timestamp":"2026-06-02 06:35:48"}
+{"level":"error","message":"ValidationError: User validation failed: password: Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)\n    at Document.invalidate (C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","service":"orion-api","timestamp":"2026-06-02 06:38:56"}
+{"level":"info","message":"SIGINT received. Starting graceful shutdown...","service":"orion-api","timestamp":"2026-06-02 06:39:51"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 22:15:23"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 22:15:25"}
+{"level":"error","message":"ValidationError: User validation failed: password: Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)\n    at Document.invalidate (C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\document.js:3358:32)\n    at C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\document.js:3119:17\n    at C:\\Users\\Gumnaami BaBa\\Desktop\\Orion\\Orion\\server\\node_modules\\mongoose\\lib\\schemaType.js:1410:9\n    at process.processTicksAndRejections (node:internal/process/task_queues:85:11)","service":"orion-api","timestamp":"2026-06-02 22:17:54"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 22:21:07"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 22:21:09"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 22:21:31"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-00.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 22:21:32"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 22:21:55"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-01.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 22:21:56"}
+{"level":"info","message":"Server running in development mode on port 5001","service":"orion-api","timestamp":"2026-06-02 22:22:18"}
+{"level":"info","message":"MongoDB Connected: ac-1265lyb-shard-00-02.v97afpj.mongodb.net","service":"orion-api","timestamp":"2026-06-02 22:22:20"}

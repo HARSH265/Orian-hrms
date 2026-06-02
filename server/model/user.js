@@ -15,18 +15,7 @@ const UserSchema = new mongoose.Schema({
     // --- Core Info ---
     name: { type: String, required: [true, 'Please add a name'] },
     email: { type: String, required: [true, 'Please add an email'], unique: true, match: [ /^\S+@\S+\.\S+$/, 'Please add a valid email'] },
-    password: { 
-        type: String, 
-        required: [true, 'Please add a password'], 
-        minlength: [8, 'Password must be at least 8 characters'],
-        select: false,
-        validate: {
-            validator: function(v) {
-                return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/.test(v);
-            },
-            message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)'
-        }
-    },
+    password: { type: String, required: [true, 'Please add a password'], minlength: 6, select: false },
     systemRole: { // Renamed from 'role'
         type: String, 
         enum: ['employee', 'manager', 'hr', 'super-admin'], 
@@ -131,11 +120,6 @@ UserSchema.pre('save', async function(next) {
 // compare password
 UserSchema.methods.matchPassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
-};
-
-UserSchema.statics.validatePassword = function(password) {
-    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-    return regex.test(password);
 };
 
 module.exports = mongoose.model('User', UserSchema);
