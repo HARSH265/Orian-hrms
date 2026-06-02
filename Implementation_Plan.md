@@ -93,6 +93,53 @@
 
 ---
 
+## 8️⃣ Module-by-Module Security Audit (Week 11) ✅
+
+Comprehensive audit of all 14 modules with 114 issues found and 62+ fixes applied.
+
+| Module | Issues | Fixes | Key Fix |
+|--------|--------|-------|---------|
+| Auth | 20 | 11 | 2FA bypass fix, password strength, refresh token expiry |
+| Employee | 10 | 9 | Mass assignment, self-endorsement bypass, pagination cap |
+| Attendance | 12 | 6 | Clock-out race condition, date range filtering, rate limiting |
+| Leave | 15 | 7 | Route mismatch (404 bug), self-approval, atomic balance deduction |
+| Tasks | 22 | 10 | Route ordering, mass assignment, circular deps, nesting limit |
+| Expenses | 10 | 3 | Self-approval, amount validation, indexes |
+| Performance | 11 | 4 | Duplicate cycle prevention, field validation, indexes |
+| Documents | 2 | 2 | Mass assignment, indexes |
+| Announcements | 2 | 2 | Mass assignment, indexes |
+| Skills | 2 | 1 | Mass assignment |
+| Surveys | 0 | 0 | Clean |
+| Chat | 3 | 2 | Missing indexes |
+| Referrals | 2 | 1 | Mass assignment on create |
+| Assets | 3 | 1 | Missing index |
+
+### Key Security Fixes Applied
+- **8 mass assignment vulnerabilities** fixed with field whitelisting (Employee, Tasks, Documents, Announcements, Skills, Referrals)
+- **6 auth/authorization issues** fixed (2FA bypass, self-approval, password strength, route mismatch)
+- **4 race conditions** fixed (clock-out, leave balance, task status, expense status)
+- **5 data integrity issues** fixed (circular deps, subtask depth, overlapping leave, past dates, duplicate cycles)
+- **14 database indexes** added across all models
+
+---
+
+## 9️⃣ Pagination & Password Management (Week 12) ✅
+
+### Pagination
+- Created shared `utils/pagination.js` utility
+- Added pagination to 13 services (documents, announcements, skills, reviews, expenses, leave, manager, kudos, jobs, surveys, policies, departments, chat)
+- All list endpoints now support `?page=1&limit=20` (max 100)
+- Response includes `{ pagination: { total, page, pages, limit } }`
+
+### Password Management
+- `PUT /api/auth/change-password` — Self-service password change (requires current password)
+- `POST /api/auth/forgot-password` — Public, generates reset token (1hr expiry)
+- `PUT /api/auth/reset-password/:token` — Public, validates password strength
+- Added `passwordResetToken` and `passwordResetExpires` to User schema
+- Audit logging on password changes
+
+---
+
 ## Success Criteria
 
 | Criteria | Status |
@@ -106,6 +153,10 @@
 | Client remains logged in after refresh + auto-refreshes on 401 | ✅ |
 | Structured logs include request ID, user ID, severity | ✅ |
 | Production runs over HTTPS with Secure cookies and Helmet/CSP | ✅ |
+| All list endpoints paginated (max 100 items) | ✅ |
+| Self-service password change available | ✅ |
+| Password reset flow with token expiry | ✅ |
+| 14-module security audit complete | ✅ |
 
 ---
 
