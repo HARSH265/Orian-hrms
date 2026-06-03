@@ -125,7 +125,7 @@ const Sidebar = () => {
   const onOpenChange = (keys) => { setOpenKeys(keys); };
   
   return (
-    <Sider collapsible theme="dark" breakpoint="lg" collapsedWidth="80">
+    <Sider collapsible theme="dark" breakpoint="lg" collapsedWidth="80" width={250}>
       <div style={{ height: '32px', margin: '16px', background: 'rgba(255, 255, 255, 0.2)', textAlign: 'center', lineHeight: '32px', color: 'white', fontWeight: 'bold', borderRadius: '6px' }}>
         Orion
       </div>
