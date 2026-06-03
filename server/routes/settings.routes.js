@@ -1,19 +1,16 @@
 const express = require('express');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
-const {
-    getSettings,
-    updateSettings,
-} = require('../controllers/settings.controller');
-
+const { getSettings, updateSettings, getConfigGroup, updateConfigGroup } = require('../controllers/settings.controller');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 const router = express.Router();
 
-// All routes are protected
 router.use(protect);
 
-// We use the root route '/' because there is only one settings document.
-router.route('/')
-    .get(getSettings) // Any authenticated user can get settings (for branding)
-    .put(checkPermissions(PERMISSIONS.MANAGE_SYSTEM_SETTINGS), updateSettings); // Only super-admins can change them
+router.get('/', getSettings);
+router.put('/', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_SYSTEM_SETTINGS), updateSettings);
+
+router.get('/groups/:group', getConfigGroup);
+router.put('/groups/:group', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_SYSTEM_SETTINGS), updateConfigGroup);
 
 module.exports = router;

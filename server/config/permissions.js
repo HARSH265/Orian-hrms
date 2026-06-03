@@ -57,16 +57,16 @@ const PERMISSIONS = {
     MANAGE_SKILLS: 'manage_skills',
     VIEW_REVIEWS: 'view_reviews',
     MANAGE_REVIEWS: 'manage_reviews',
-    VIEW_TEAM_REVIEWS: 'view_team_reviews',
     VIEW_EXPENSES: 'view_expenses',
     MANAGE_REFERRALS: 'manage_referrals',
     MANAGE_EXPENSES: 'manage_expenses',
-    VIEW_TEAM_EXPENSES: 'view_team_expenses',
 
     // ======== SETTINGS (SUPER-ADMIN) ========
     MANAGE_SYSTEM_SETTINGS: 'manage_system_settings',
     VIEW_REPORTS: 'view_reports',
     MANAGE_CUSTOM_FIELDS: 'manage_custom_fields',
+    // ======== KUDOS ========
+    MANAGE_KUDOS: 'manage_kudos',
     // ======== DOCUMENT MANAGEMENT (ADMIN) ========
     VIEW_DOCUMENTS: 'view_documents',
     MANAGE_DOCUMENTS: 'manage_documents'
@@ -87,6 +87,7 @@ module.exports = {
             PERMISSIONS.VIEW_SKILLS,
             PERMISSIONS.VIEW_EXPENSES,
             PERMISSIONS.VIEW_DEPARTMENTS,
+            PERMISSIONS.VIEW_DOCUMENTS,
         ],
         manager: [
             PERMISSIONS.VIEW_TEAM_MEMBERS,
@@ -107,6 +108,8 @@ module.exports = {
             PERMISSIONS.VIEW_DEPARTMENTS,
             PERMISSIONS.VIEW_ALL_LEAVE_REQUESTS,
             PERMISSIONS.VIEW_REVIEWS,
+            PERMISSIONS.MANAGE_KUDOS,
+            PERMISSIONS.VIEW_DOCUMENTS,
         ],
         hr: [
             PERMISSIONS.MANAGE_USERS,
@@ -138,6 +141,9 @@ module.exports = {
             PERMISSIONS.VIEW_TEAM_EXPENSES,
             PERMISSIONS.MANAGE_SURVEYS,
             PERMISSIONS.VIEW_SURVEYS,
+            PERMISSIONS.MANAGE_KUDOS,
+            PERMISSIONS.VIEW_DOCUMENTS,
+            PERMISSIONS.MANAGE_DOCUMENTS,
         ],
         "super-admin": SUPER_ADMIN_PERMISSIONS,
     },

@@ -1,48 +1,52 @@
-// In: server/routes/taskRoutes.js
-
 const express = require('express');
 const {
     createTask, getMyTasks, getTeamTasks, updateTask, updateTaskStatus, deleteTask,
     getTasksCreatedByMe, getAllTasks, addComment, addAttachment, createSubTask, getTaskById,
-    requestTaskReopen, updateTaskDependencies, resolveTaskReopen, logTimeToTask, toggleTaskSubscription 
+    requestTaskReopen, updateTaskDependencies, resolveTaskReopen, logTimeToTask, toggleTaskSubscription,
+    getMyTaskSummary, getDashboard, getKanbanBoard, setRecurrence, exportCSV, getActivityFeed,
+    bulkUpdateStatus, bulkAssign, bulkDelete,
 } = require('../controllers/taskController');
-
-// --- THE UPGRADE: Import checkPermissions and PERMISSIONS ---
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
 router.use(protect);
 
-// --- General & Self-Service Routes ---
-// Anyone who can log in can perform these actions on their own tasks.
-// The permission checks are inside the controllers for these.
-router.route('/my-tasks').get(getMyTasks);
-router.route('/created-by-me').get(getTasksCreatedByMe);
-router.route('/:id/status').put(updateTaskStatus);
-router.route('/:id/comments').post(addComment);
-router.route('/:id/attachments').post(addAttachment);
-router.route('/:id/subscribe').post(toggleTaskSubscription);
-router.route('/:id/reopen-requests').post(requestTaskReopen);
-router.route('/:id/log-time').post(logTimeToTask);
-router.route('/:id/dependencies').put(updateTaskDependencies);
-router.route('/:id/subtasks').post(createSubTask);
-router.route('/reopen-requests/:requestId').put(resolveTaskReopen);
-router.route('/:id').get(getTaskById); // The controller has internal checks
+// ─── Static routes (must precede /:id) ──────────────────────
+router.get('/my-tasks', getMyTasks);
+router.get('/my-summary', getMyTaskSummary);
+router.get('/dashboard', getDashboard);
+router.get('/board', getKanbanBoard);
+router.get('/export', exportCSV);
+router.get('/created-by-me', getTasksCreatedByMe);
+router.get('/all', checkPermissions(PERMISSIONS.EDIT_ALL_TASKS), getAllTasks);
+router.get('/team-tasks', checkPermissions(PERMISSIONS.VIEW_TEAM_TASKS), getTeamTasks);
 
-// --- Routes requiring specific permissions ---
+router.post('/bulk/status', writeLimiter, bulkUpdateStatus);
+router.post('/bulk/assign', writeLimiter, bulkAssign);
+router.post('/bulk/delete', writeLimiter, bulkDelete);
 
-// A user needs the generic CREATE_TASKS permission to create any task
-router.route('/').post(checkPermissions(PERMISSIONS.CREATE_TASKS), createTask);
+router.post('/', writeLimiter, checkPermissions(PERMISSIONS.CREATE_TASKS), createTask);
 
-// A user needs specific VIEW_TEAM_TASKS permission to see their team's tasks
-router.route('/team-tasks').get(checkPermissions(PERMISSIONS.VIEW_TEAM_TASKS), getTeamTasks);
+// ─── Reopen resolution (static param name) ──────────────────
+router.put('/reopen-requests/:requestId', writeLimiter, resolveTaskReopen);
 
-// Admin-level routes for managing ANY task in the system
-router.route('/all').get(checkPermissions(PERMISSIONS.EDIT_ALL_TASKS), getAllTasks);
-router.route('/:id')
-    .put(updateTask)
-    .delete(checkPermissions(PERMISSIONS.DELETE_ALL_TASKS), deleteTask);
+// ─── Param routes ───────────────────────────────────────────
+router.get('/:id', getTaskById);
+router.put('/:id', writeLimiter, updateTask);
+router.delete('/:id', writeLimiter, checkPermissions(PERMISSIONS.DELETE_ALL_TASKS), deleteTask);
+
+router.put('/:id/status', writeLimiter, updateTaskStatus);
+router.post('/:id/comments', writeLimiter, addComment);
+router.post('/:id/attachments', writeLimiter, addAttachment);
+router.post('/:id/subscribe', writeLimiter, toggleTaskSubscription);
+router.post('/:id/reopen-requests', writeLimiter, requestTaskReopen);
+router.post('/:id/log-time', writeLimiter, logTimeToTask);
+router.put('/:id/dependencies', writeLimiter, updateTaskDependencies);
+router.put('/:id/recurrence', writeLimiter, setRecurrence);
+router.post('/:id/subtasks', writeLimiter, createSubTask);
+router.get('/:id/activity', getActivityFeed);
 
 module.exports = router;

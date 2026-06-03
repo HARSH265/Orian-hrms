@@ -1,7 +1,7 @@
 const Survey = require('../model/Survey');
 const SurveyResponse = require('../model/SurveyResponse');
-const User = require('../model/user');
 const { createNotification } = require('./notificationService');
+const { createAuditLog } = require('./auditLogService');
 const logger = require('../utils/logger');
 const { parsePagination, buildPagination } = require('../utils/pagination');
 
@@ -10,36 +10,41 @@ const createSurvey = async (surveyData, userId, req) => {
     const survey = await Survey.create({ title, description, isAnonymous, recipients, questions, creator: userId, status: 'active' });
 
     const notificationPromises = recipients.map(recipientId =>
-        createNotification(
-            {
-                recipient: recipientId,
-                sender: userId,
-                message: `You have been assigned a new survey: "${title}"`,
-                link: '/surveys', type: 'General'
-            }, req)
+        createNotification({
+            recipient: recipientId, sender: userId,
+            message: `You have been assigned a new survey: "${title}"`,
+            link: '/surveys', type: 'General',
+        }, req)
     );
     await Promise.all(notificationPromises);
+
+    await createAuditLog({
+        actor: userId, action: 'SURVEY_CREATED',
+        target: { id: survey._id, type: 'Survey' },
+        details: { title },
+        ipAddress: req?.ip,
+    });
 
     return survey;
 };
 
-const getAllSurveys = async ({ page, limit } = {}) => {
+const getAllSurveys = async ({ page, limit, status } = {}) => {
     const { page: p, limit: l, skip } = parsePagination({ page, limit });
+    const query = {};
+    if (status) query.status = status;
     const [surveys, total] = await Promise.all([
-        Survey.find().populate('creator', 'name').sort({ createdAt: -1 }).lean().skip(skip).limit(l),
-        Survey.countDocuments()
+        Survey.find(query).populate('creator', 'name').sort({ createdAt: -1 }).lean().skip(skip).limit(l),
+        Survey.countDocuments(query)
     ]);
     return { data: surveys, pagination: buildPagination(total, p, l) };
 };
 
-const getSurveyById = async (id, userId, userRole) => {
+const getSurveyById = async (id, userId, userSystemRole) => {
     const survey = await Survey.findById(id).lean();
-    if (!survey) {
-        return { error: 'not_found' };
-    }
+    if (!survey) return { error: 'not_found' };
 
     const isRecipient = survey.recipients.some(rid => rid.equals(userId));
-    if (userRole !== 'hr' && userRole !== 'super-admin' && !isRecipient) {
+    if (userSystemRole !== 'hr' && userSystemRole !== 'super-admin' && !isRecipient) {
         return { error: 'unauthorized' };
     }
 
@@ -59,27 +64,28 @@ const getMyAssignedSurveys = async (userId, { page, limit } = {}) => {
     return { data: pendingSurveys, pagination: buildPagination(total, p, l) };
 };
 
-const submitResponse = async (surveyId, answers, user) => {
+const submitResponse = async (surveyId, answers, user, req) => {
     const survey = await Survey.findById(surveyId).lean();
-    if (!survey || survey.status !== 'active') {
-        return { error: 'not_active' };
-    }
+    if (!survey || survey.status !== 'active') return { error: 'not_active' };
 
     const existingResponse = await SurveyResponse.findOne({ survey: surveyId, respondent: user._id }).lean();
-    if (existingResponse) {
-        return { error: 'already_responded' };
-    }
+    if (existingResponse) return { error: 'already_responded' };
 
     const responseData = { survey: surveyId, answers, respondent: survey.isAnonymous ? null : user._id };
     await SurveyResponse.create(responseData);
+
+    await createAuditLog({
+        actor: user._id, action: 'SURVEY_RESPONSE_SUBMITTED',
+        target: { id: surveyId, type: 'Survey' },
+        ipAddress: req?.ip,
+    });
+
     return { success: true };
 };
 
 const getSurveyResults = async (surveyId) => {
     const survey = await Survey.findById(surveyId).lean();
-    if (!survey) {
-        return { error: 'not_found' };
-    }
+    if (!survey) return { error: 'not_found' };
 
     const responses = await SurveyResponse.find({ survey: surveyId }).lean();
     const totalResponses = responses.length;
@@ -87,26 +93,30 @@ const getSurveyResults = async (surveyId) => {
     const results = survey.questions.map(question => {
         const questionIdStr = question._id.toString();
         let aggregatedData = {};
+
         switch (question.questionType) {
             case 'text':
                 aggregatedData.answers = responses.map(r => r.answers.find(a => a.questionId.toString() === questionIdStr)?.answerValue).filter(Boolean);
                 break;
-            case 'multiple-choice':
+            case 'multiple-choice': {
                 const voteCounts = new Map();
                 question.options.forEach(opt => voteCounts.set(opt, 0));
                 responses.forEach(r => {
                     const answer = r.answers.find(a => a.questionId.toString() === questionIdStr)?.answerValue;
-                    if (voteCounts.has(answer)) { voteCounts.set(answer, voteCounts.get(answer) + 1); }
+                    if (voteCounts.has(answer)) voteCounts.set(answer, voteCounts.get(answer) + 1);
                 });
                 aggregatedData.options = Object.fromEntries(voteCounts);
                 break;
-            case 'rating-scale':
+            }
+            case 'rating-scale': {
                 const ratings = responses.map(r => r.answers.find(a => a.questionId.toString() === questionIdStr)?.answerValue).filter(val => typeof val === 'number');
                 const sum = ratings.reduce((acc, curr) => acc + curr, 0);
                 aggregatedData.average = ratings.length > 0 ? (sum / ratings.length).toFixed(2) : 0;
                 aggregatedData.count = ratings.length;
                 break;
+            }
         }
+
         return { questionId: question._id, questionText: question.questionText, questionType: question.questionType, results: aggregatedData };
     });
 
@@ -115,14 +125,8 @@ const getSurveyResults = async (surveyId) => {
 
 const updateSurvey = async (id, updateFields) => {
     const survey = await Survey.findById(id);
-    if (!survey) {
-        return { error: 'not_found' };
-    }
-
-    if (survey.status === 'closed') {
-        return { error: 'closed' };
-    }
-
+    if (!survey) return { error: 'not_found' };
+    if (survey.status === 'closed') return { error: 'closed' };
     const { title, description } = updateFields;
     const updated = await Survey.findByIdAndUpdate(id, { title, description }, { new: true, runValidators: true });
     return { survey: updated };
@@ -130,22 +134,26 @@ const updateSurvey = async (id, updateFields) => {
 
 const deleteSurvey = async (id) => {
     const survey = await Survey.findById(id);
-    if (!survey) {
-        return { error: 'not_found' };
-    }
-
+    if (!survey) return { error: 'not_found' };
     survey.status = 'closed';
     await survey.save();
     return { success: true };
 };
 
+const exportSurveysCSV = async (filter = {}) => {
+    const surveys = await Survey.find(filter)
+        .populate('creator', 'name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const header = 'Title,Status,Questions,Recipients,Anonymous,Created By,Created At\n';
+    const rows = surveys.map(s =>
+        `"${s.title || ''}",${s.status},${s.questions?.length || 0},${s.recipients?.length || 0},${s.isAnonymous ? 'Yes' : 'No'},"${s.creator?.name || ''}",${new Date(s.createdAt).toISOString().split('T')[0]}`
+    ).join('\n');
+    return header + rows;
+};
+
 module.exports = {
-    createSurvey,
-    getAllSurveys,
-    getSurveyById,
-    getMyAssignedSurveys,
-    submitResponse,
-    getSurveyResults,
-    updateSurvey,
-    deleteSurvey,
+    createSurvey, getAllSurveys, getSurveyById, getMyAssignedSurveys,
+    submitResponse, getSurveyResults, updateSurvey, deleteSurvey, exportSurveysCSV,
 };

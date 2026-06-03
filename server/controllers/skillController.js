@@ -1,36 +1,57 @@
-const { getAllSkills, createSkill, updateSkill, archiveSkill } = require('../services/skillService');
+const asyncHandler = require('../utils/asyncHandler');
+const skillService = require('../services/skillService');
 
-exports.getAllSkills = async (req, res, next) => {
-    try {
-        const { page, limit } = req.query;
-        const result = await getAllSkills(req.user.role, { page, limit });
-        res.status(200).json({ success: true, ...result });
-    } catch (error) { next(error); }
-};
+exports.getAllSkills = asyncHandler(async (req, res) => {
+    const { page, limit, category } = req.query;
+    const result = await skillService.getAllSkills(req.user.systemRole, { page, limit, category });
+    res.json({ success: true, ...result });
+});
 
-exports.createSkill = async (req, res, next) => {
+exports.getSkillById = asyncHandler(async (req, res, next) => {
     try {
-        const skill = await createSkill(req.body, req.user.id);
+        const skill = await skillService.getSkillById(req.params.id);
+        res.json({ success: true, data: skill });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        next(error);
+    }
+});
+
+exports.createSkill = asyncHandler(async (req, res, next) => {
+    try {
+        const skill = await skillService.createSkill(req.body, req.user.id, req.ip);
         res.status(201).json({ success: true, data: skill });
-    } catch (error) { next(error); }
-};
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        next(error);
+    }
+});
 
-exports.updateSkill = async (req, res, next) => {
+exports.updateSkill = asyncHandler(async (req, res, next) => {
     try {
-        const skill = await updateSkill(req.params.id, req.body);
-        if (!skill) {
-            return res.status(404).json({ success: false, message: 'Skill not found' });
-        }
-        res.status(200).json({ success: true, data: skill });
-    } catch (error) { next(error); }
-};
+        const skill = await skillService.updateSkill(req.params.id, req.body, req.user.id, req.ip);
+        res.json({ success: true, data: skill });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        next(error);
+    }
+});
 
-exports.archiveSkill = async (req, res, next) => {
+exports.archiveSkill = asyncHandler(async (req, res, next) => {
     try {
-        const skill = await archiveSkill(req.params.id);
-        if (!skill) {
-            return res.status(404).json({ success: false, message: 'Skill not found' });
-        }
-        res.status(200).json({ success: true, message: 'Skill archived successfully' });
-    } catch (error) { next(error); }
-};
+        await skillService.archiveSkill(req.params.id, req.user.id, req.ip);
+        res.json({ success: true, message: 'Skill archived.' });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        next(error);
+    }
+});
+
+exports.exportSkills = asyncHandler(async (req, res) => {
+    const filter = {};
+    if (req.query.category) filter.category = req.query.category;
+    const csv = await skillService.exportSkillsCSV(filter);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="skills-export.csv"');
+    res.send(csv);
+});

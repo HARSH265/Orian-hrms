@@ -1,22 +1,26 @@
 const express = require('express');
 const {
-    submitReferral,
-    getAllReferrals,
-    updateReferralStatus
+    submitReferral, getAllReferrals, getReferralById, getMyReferrals,
+    updateReferralStatus, exportReferrals,
 } = require('../controllers/referralController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { featureEnabled } = require('../middleware/featureToggle');
 const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// All routes require login
 router.use(protect);
+router.use(featureEnabled('referrals'));
 
-// Submitting a referral is open to everyone
-router.route('/').post(submitReferral);
+router.get('/my-referrals', getMyReferrals);
+router.get('/export', checkPermissions(PERMISSIONS.MANAGE_REFERRALS), exportReferrals);
 
-// Viewing and managing referrals is admin-only
-router.route('/').get(checkPermissions(PERMISSIONS.MANAGE_REFERRALS), getAllReferrals);
-router.route('/:id').put(checkPermissions(PERMISSIONS.MANAGE_REFERRALS), updateReferralStatus);
+router.route('/')
+    .post(submitReferral)
+    .get(checkPermissions(PERMISSIONS.MANAGE_REFERRALS), getAllReferrals);
+
+router.route('/:id')
+    .get(getReferralById)
+    .put(checkPermissions(PERMISSIONS.MANAGE_REFERRALS), updateReferralStatus);
 
 module.exports = router;

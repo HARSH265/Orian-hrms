@@ -1,23 +1,19 @@
 const express = require('express');
-const { 
-    getAllLeavePolicies, 
-    createLeavePolicy, 
-    updateLeavePolicy, 
-    archiveLeavePolicy 
+const {
+    getAllLeavePolicies, createLeavePolicy, updateLeavePolicy, archiveLeavePolicy, unarchiveLeavePolicy,
 } = require('../controllers/leavePolicyController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
-// Get all is for any logged-in user (for forms)
-router.route('/').get(protect, getAllLeavePolicies);
+router.get('/', protect, getAllLeavePolicies);
 
-// Create, Update, Delete are for admins only
 router.use(protect, checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES));
-router.route('/').post(createLeavePolicy);
-router.route('/:id')
-    .put(updateLeavePolicy)
-    .delete(archiveLeavePolicy);
+router.post('/', writeLimiter, createLeavePolicy);
+router.put('/:id', writeLimiter, updateLeavePolicy);
+router.delete('/:id', writeLimiter, archiveLeavePolicy);
+router.patch('/:id/unarchive', writeLimiter, unarchiveLeavePolicy);
 
 module.exports = router;

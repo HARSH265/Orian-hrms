@@ -1,80 +1,112 @@
 import { createSlice } from '@reduxjs/toolkit';
-// Import all of the thunks related to the expense feature
 import { 
     fetchMyExpenses, 
     submitExpense,
     fetchTeamExpenses,
-    updateTeamExpenseStatus,  // The correctly named thunk for managers
-    fetchAllSystemExpenses, // The new thunk for the admin view
-    adminUpdateExpenseStatus // The new thunk for admin actions
+    updateTeamExpenseStatus,
+    fetchAllSystemExpenses,
+    adminUpdateExpenseStatus
 } from './expenseThunks';
 
-// This is the complete state shape for this slice
 const initialState = {
-  myExpenses: [],       // For the employee's personal view
-  teamExpenses: [],     // For the manager's team view
-  allExpenses: [],      // For the global admin view
-  status: 'idle',       // Tracks the loading status ('idle' | 'loading' | 'succeeded' | 'failed')
+  myExpenses: [],
+  teamExpenses: [],
+  allExpenses: [],
+  myStatus: 'idle',
+  teamStatus: 'idle',
+  allStatus: 'idle',
+  actionStatus: 'idle',
   error: null,
 };
 
 const expenseSlice = createSlice({
   name: 'expense',
   initialState,
-  reducers: {}, // No synchronous reducers needed for this slice
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
-      // --- Cases for Employee's "My Expenses" View ---
-      .addCase(fetchMyExpenses.pending, (state) => { state.status = 'loading'; })
+      // --- My Expenses ---
+      .addCase(fetchMyExpenses.pending, (state) => {
+        state.myStatus = 'loading';
+        state.error = null;
+      })
       .addCase(fetchMyExpenses.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.myStatus = 'succeeded';
         state.myExpenses = action.payload;
       })
       .addCase(fetchMyExpenses.rejected, (state, action) => {
-        state.status = 'failed';
+        state.myStatus = 'failed';
         state.error = action.payload;
       })
-
-      // --- Cases for Manager's "Team Expenses" View ---
-      .addCase(fetchTeamExpenses.pending, (state) => { state.status = 'loading'; })
+      // --- Team Expenses ---
+      .addCase(fetchTeamExpenses.pending, (state) => {
+        state.teamStatus = 'loading';
+        state.error = null;
+      })
       .addCase(fetchTeamExpenses.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.teamStatus = 'succeeded';
         state.teamExpenses = action.payload;
       })
       .addCase(fetchTeamExpenses.rejected, (state, action) => {
-        state.status = 'failed';
+        state.teamStatus = 'failed';
         state.error = action.payload;
       })
-      
-      // --- Cases for Admin's "All Expenses" View ---
-      .addCase(fetchAllSystemExpenses.pending, (state) => { state.status = 'loading'; })
+      // --- All Expenses (Admin) ---
+      .addCase(fetchAllSystemExpenses.pending, (state) => {
+        state.allStatus = 'loading';
+        state.error = null;
+      })
       .addCase(fetchAllSystemExpenses.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.allStatus = 'succeeded';
         state.allExpenses = action.payload;
       })
       .addCase(fetchAllSystemExpenses.rejected, (state, action) => {
-        state.status = 'failed';
+        state.allStatus = 'failed';
         state.error = action.payload;
       })
-      
-      // --- Generic Matchers for Actions (Create, Update) ---
-      // These handle the loading/success/fail states for any action that modifies data.
-      .addMatcher(
-        (action) => [submitExpense.pending, updateTeamExpenseStatus.pending, adminUpdateExpenseStatus.pending].includes(action.type),
-        (state) => { state.status = 'loading'; }
-      )
-      .addMatcher(
-        (action) => [submitExpense.fulfilled, updateTeamExpenseStatus.fulfilled, adminUpdateExpenseStatus.fulfilled].includes(action.type),
-        (state) => { state.status = 'succeeded'; }
-      )
-      .addMatcher(
-        (action) => [submitExpense.rejected, updateTeamExpenseStatus.rejected, adminUpdateExpenseStatus.rejected].includes(action.type),
-        (state, action) => {
-          state.status = 'failed';
-          state.error = action.payload;
-        }
-      );
+      // --- Mutating Actions ---
+      .addCase(submitExpense.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.error = null;
+      })
+      .addCase(submitExpense.fulfilled, (state) => {
+        state.actionStatus = 'succeeded';
+        state.error = null;
+      })
+      .addCase(submitExpense.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(updateTeamExpenseStatus.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.error = null;
+      })
+      .addCase(updateTeamExpenseStatus.fulfilled, (state) => {
+        state.actionStatus = 'succeeded';
+        state.error = null;
+      })
+      .addCase(updateTeamExpenseStatus.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(adminUpdateExpenseStatus.pending, (state) => {
+        state.actionStatus = 'loading';
+        state.error = null;
+      })
+      .addCase(adminUpdateExpenseStatus.fulfilled, (state) => {
+        state.actionStatus = 'succeeded';
+        state.error = null;
+      })
+      .addCase(adminUpdateExpenseStatus.rejected, (state, action) => {
+        state.actionStatus = 'failed';
+        state.error = action.payload;
+      });
   },
 });
 
+export const { clearError } = expenseSlice.actions;
 export default expenseSlice.reducer;

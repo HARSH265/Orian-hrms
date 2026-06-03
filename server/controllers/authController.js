@@ -73,11 +73,12 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
 
 // Reset password
 exports.resetPassword = asyncHandler(async (req, res) => {
-    const { token } = req.params;
-    const { newPassword } = req.body;
-    if (!token || !newPassword) {
-        return res.status(400).json({ success: false, message: 'Please provide token and new password' });
-    }
-    const result = await authService.resetPassword(token, newPassword);
-    return res.status(200).json(result);
+  const { token } = req.params;
+  const { newPassword } = req.body;
+  const cleanToken = token.replace(/[^a-f0-9]/gi, '');
+  if (!cleanToken || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Token or password missing' });
+  }
+  const result = await authService.resetPassword(cleanToken, newPassword);
+  return res.status(200).json(result);
 });

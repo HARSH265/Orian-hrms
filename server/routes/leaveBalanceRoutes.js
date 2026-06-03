@@ -1,16 +1,16 @@
 const express = require('express');
-const { getMyBalances, assignPolicyToEmployee } = require('../controllers/leaveBalanceController');
+const { getMyBalances, getAdminBalances, assignPolicyToEmployee, bulkAssignPolicy } = require('../controllers/leaveBalanceController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
 router.use(protect);
 
-// Employee can get their own balances
 router.get('/my-balances', getMyBalances);
-
-// Admin can assign policies
-router.post('/', checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), assignPolicyToEmployee);
+router.get('/admin', checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), getAdminBalances);
+router.post('/', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), assignPolicyToEmployee);
+router.post('/bulk', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), bulkAssignPolicy);
 
 module.exports = router;

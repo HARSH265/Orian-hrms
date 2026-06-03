@@ -9,16 +9,13 @@ const { Title } = Typography;
 
 const AdminExpensesPage = () => {
     const dispatch = useDispatch();
-    // Select the correct data from the Redux store
-    const { allExpenses, status } = useSelector((state) => state.expense);
+    const { allExpenses, allStatus, actionStatus } = useSelector((state) => state.expense);
 
     useEffect(() => {
         dispatch(fetchAllSystemExpenses());
     }, [dispatch]);
 
-    // This is the local handler function for this component
     const handleUpdateStatus = (expenseId, newStatus) => {
-        // It dispatches the specific admin thunk
         dispatch(adminUpdateExpenseStatus({ expenseId, status: newStatus })).unwrap()
             .then(() => message.success(`Claim has been ${newStatus.toLowerCase()}.`))
             .catch((err) => message.error(`Failed to update: ${err}`));
@@ -27,7 +24,13 @@ const AdminExpensesPage = () => {
     const columns = [
         { title: 'Employee', dataIndex: ['employee', 'name'], key: 'employeeName' },
         { title: 'Date', dataIndex: 'date', render: (date) => new Date(date).toLocaleDateString() },
-        { title: 'Amount', dataIndex: 'amount', render: (amount) => `$${amount.toFixed(2)}` },
+        {
+            title: 'Amount', key: 'amount',
+            render: (_, record) => {
+                const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: record.currency || 'USD' });
+                return fmt.format(record.amount);
+            }
+        },
         { title: 'Description', dataIndex: 'description' },
         { 
             title: 'Status', dataIndex: 'status', 
@@ -38,7 +41,6 @@ const AdminExpensesPage = () => {
             render: (_, record) => (
                 record.status === 'Pending' && (
                     <Space size="middle">
-                        {/* Buttons now correctly call the local handler */}
                         <Button type="primary" size="small" onClick={() => handleUpdateStatus(record._id, 'Approved')}>Approve</Button>
                         <Button type="primary" danger size="small" onClick={() => handleUpdateStatus(record._id, 'Denied')}>Deny</Button>
                     </Space>
@@ -49,8 +51,7 @@ const AdminExpensesPage = () => {
 
     return (
         <Card title={<Title level={3}>All Expense Claims (Admin View)</Title>}>
-            {/* The table's dataSource now correctly uses the `allExpenses` variable */}
-            <Table columns={columns} dataSource={allExpenses} rowKey="_id" loading={status === 'loading'} scroll={{ x: true }} />
+            <Table columns={columns} dataSource={allExpenses} rowKey="_id" loading={allStatus === 'loading' || actionStatus === 'loading'} scroll={{ x: true }} />
         </Card>
     );
 };

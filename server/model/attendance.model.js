@@ -6,9 +6,15 @@ const AttendanceSchema = new mongoose.Schema({
         ref: 'User',
         required: true,
     },
-    date: { // We store the date without time for easy querying
+    date: {
         type: Date,
         required: true,
+        validate: {
+            validator: function (v) {
+                return v <= new Date();
+            },
+            message: 'Date cannot be in the future',
+        },
     },
     clockInTime: {
         type: Date, // This will be a full ISODate with timestamp

@@ -1,7 +1,7 @@
 import React, { Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { Spin } from 'antd';
+import { Spin, notification } from 'antd';
 import { getMe } from './features/auth/authThunks';
 
 // --- Core Layouts and Authentication ---
@@ -33,6 +33,7 @@ const AnnouncementAdminPage = React.lazy(() => import('./pages/AnnouncementAdmin
 const AssetAdminPage = React.lazy(() => import('./pages/AssetAdminPage'));
 const ChecklistTemplatePage = React.lazy(() => import('./pages/ChecklistTemplatePage'));
 const AdminExpensesPage = React.lazy(() => import('./pages/AdminExpensesPage'));
+const AdminExpenseCategoriesPage = React.lazy(() => import('./pages/AdminExpenseCategoriesPage'));
 const ReportsPage = React.lazy(() => import('./pages/ReportsPage'));
 const AdminDashboardPage = React.lazy(() => import('./pages/AdminDashboardPage'));
 const AdminPerformancePage = React.lazy(() => import('./pages/AdminPerformancePage'));
@@ -52,13 +53,24 @@ const AdminRolesPage = React.lazy(() => import('./pages/AdminRolesPage'));
 
 function App() {
   const dispatch = useDispatch();
-  const { token, user } = useSelector((state) => state.auth);
+  const { token, user, tokenExpiryWarning } = useSelector((state) => state.auth);
 
   useEffect(() => {
     if (token && !user) {
       dispatch(getMe());
     }
   }, [token, user, dispatch]);
+
+  useEffect(() => {
+    if (tokenExpiryWarning) {
+      notification.warning({
+        message: 'Session Expiring Soon',
+        description: 'Your session will expire in less than 5 minutes. Please save your work.',
+        duration: 10,
+        key: 'token-expiry-warning',
+      });
+    }
+  }, [tokenExpiryWarning]);
 
   return (
     <ErrorBoundary>
@@ -97,7 +109,8 @@ function App() {
                 <Route path="/admin/users" element={<AdminUserPage />} />
                 <Route path="/admin/departments" element={<DepartmentPage />} />
                 <Route path="/admin/leaves" element={<AdminLeavePage />} />
-                <Route path="/admin/expenses" element={<AdminExpensesPage />} /> 
+                 <Route path="/admin/expenses" element={<AdminExpensesPage />} />
+                 <Route path="/admin/expense-categories" element={<AdminExpenseCategoriesPage />} />
                 <Route path="/admin/announcements" element={<AnnouncementAdminPage />} />
                 <Route path="/admin/assets" element={<AssetAdminPage />} />
                 <Route path="/admin/checklist-templates" element={<ChecklistTemplatePage />} />

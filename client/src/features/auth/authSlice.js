@@ -1,7 +1,7 @@
 // In: client/src/features/auth/authSlice.js
 
 import { createSlice } from '@reduxjs/toolkit';
-import { loginUser, getMe, updateProfile, updateProfilePicture,generate2FASecret, verify2FACode, disable2FA } from './authThunks'; 
+import { loginUser, getMe, updateProfile, updateProfilePicture, generate2FASecret, verify2FACode } from './authThunks'; 
 import { addSkillToProfile, removeSkillFromProfile } from '../skill/skillThunks';
 import api from '../../services/api';
 
@@ -10,6 +10,8 @@ const initialState = {
   token: localStorage.getItem('accessToken') || null,
   status: 'idle',
   error: null,
+  tokenExpiresAt: null,
+  tokenExpiryWarning: false,
   twoFactorSetup: {
     qrCode: null,
     secret: null,
@@ -22,26 +24,34 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    logout: (state) => {
-      localStorage.removeItem('accessToken');
-      delete api.defaults.headers.common['Authorization'];
-      state.user = null;
-      state.token = null;
-      state.status = 'idle';
-      state.error = null;
-      state.twoFactorSetup = initialState.twoFactorSetup;
-    },
+     logout: (state) => {
+       localStorage.removeItem('accessToken');
+       delete api.defaults.headers.common['Authorization'];
+       document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+       state.user = null;
+       state.token = null;
+       state.tokenExpiresAt = null;
+       state.tokenExpiryWarning = false;
+       state.status = 'idle';
+       state.error = null;
+       state.twoFactorSetup = initialState.twoFactorSetup;
+     },
     // =======================================================================
     // --- THE FIX: This reducer must also update localStorage ---
-    tokenRefreshed: (state, action) => {
-        state.token = action.payload;
-        // This is the critical missing piece. Without this, the new token
-        // is lost on the next page refresh.
-        localStorage.setItem('accessToken', action.payload);
+  tokenRefreshed: (state, action) => {
+      state.token = action.payload;
+      localStorage.setItem('accessToken', action.payload);
     },
     // =======================================================================
     clear2FASetup: (state) => {
         state.twoFactorSetup = initialState.twoFactorSetup;
+    },
+    setTokenExpiry: (state, action) => {
+        state.tokenExpiresAt = action.payload;
+        state.tokenExpiryWarning = false;
+    },
+    tokenExpiryWarning: (state) => {
+        state.tokenExpiryWarning = true;
     }
   },
   extraReducers: (builder) => {
@@ -66,6 +76,8 @@ const authSlice = createSlice({
         state.error = action.payload;
         state.user = null;
         state.token = null;
+        state.tokenExpiresAt = null;
+        state.tokenExpiryWarning = false;
       })
       // GetMe (Profile fetch) cases
       .addCase(getMe.pending, (state) => { state.status = 'loading'; })
@@ -81,6 +93,8 @@ const authSlice = createSlice({
         localStorage.removeItem('accessToken');
         state.user = null;
         state.token = null;
+        state.tokenExpiresAt = null;
+        state.tokenExpiryWarning = false;
       })
       // UpdateProfile cases
       .addCase(updateProfile.pending, (state) => { state.status = 'loading'; })
@@ -142,5 +156,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, tokenRefreshed, clear2FASetup } = authSlice.actions;
+export const { logout, tokenRefreshed, clear2FASetup, setTokenExpiry, tokenExpiryWarning: setTokenExpiryWarning } = authSlice.actions;
 export default authSlice.reducer;

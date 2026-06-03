@@ -29,8 +29,8 @@ const LeaveSchema = new mongoose.Schema({
         default: 'Pending',
     },
     attachments: [{ 
-        fileName: String,
-        filePath: String, 
+        fileName: { type: String, required: true },
+        filePath: { type: String, required: true }, 
     }],
     approvedBy: { 
         type: mongoose.Schema.Types.ObjectId,
@@ -43,6 +43,7 @@ const LeaveSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 LeaveSchema.index({ employee: 1, createdAt: -1 });
+LeaveSchema.index({ employee: 1, status: 1, startDate: 1, endDate: 1 });
 LeaveSchema.index({ status: 1, startDate: 1, endDate: 1 });
 
 module.exports = mongoose.model('Leave', LeaveSchema);

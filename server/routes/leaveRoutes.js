@@ -1,19 +1,26 @@
 const express = require('express');
-const { applyForLeave, getMyLeaveHistory, withdrawLeaveRequest } = require('../controllers/leaveController');
-const { protect } = require('../middleware/authMiddleware');
+const {
+    applyForLeave, getMyLeaveHistory, withdrawLeaveRequest,
+    getTeamLeaves, reviewLeaveRequest, getAllLeaves,
+    getLeaveSummary, exportLeaves,
+} = require('../controllers/leaveController');
+const { protect, checkPermissions } = require('../middleware/authMiddleware');
+const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// All routes in this file are protected
 router.use(protect);
 
-router.route('/')
-    .post(applyForLeave);
+router.get('/export', checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), exportLeaves);
+router.get('/summary', getLeaveSummary);
+router.get('/summary/:employeeId', checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), getLeaveSummary);
+router.get('/my-history', getMyLeaveHistory);
+router.get('/team', getTeamLeaves);
+router.get('/admin', checkPermissions(PERMISSIONS.MANAGE_LEAVE_POLICIES), getAllLeaves);
 
-router.route('/my-history')
-    .get(getMyLeaveHistory);
+router.post('/', applyForLeave);
 
-    router.route('/:id/withdraw')
-    .put(withdrawLeaveRequest);
+router.put('/:id/withdraw', withdrawLeaveRequest);
+router.put('/:id/review', reviewLeaveRequest);
 
 module.exports = router;

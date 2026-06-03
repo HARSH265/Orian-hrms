@@ -24,6 +24,13 @@ const CustomFieldSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    order: {
+        type: Number,
+        default: 0,
+    },
 }, { timestamps: true });
+
+CustomFieldSchema.index({ name: 1, appliesTo: 1 }, { unique: true });
+CustomFieldSchema.index({ appliesTo: 1, order: 1 });
 
 module.exports = mongoose.model('CustomField', CustomFieldSchema);

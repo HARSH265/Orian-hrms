@@ -4,7 +4,9 @@ const {
     clockIn,
     clockOut,
     getMyAttendance,
-    getTeamAttendance
+    getTeamAttendance,
+    getMySummary,
+    updateAttendance
 } = require('../controllers/attendanceController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
@@ -24,8 +26,12 @@ router.use(protect);
 router.post('/clock-in', clockLimiter, clockIn);
 router.post('/clock-out', clockLimiter, clockOut);
 router.get('/my-records', getMyAttendance);
+router.get('/my-summary', getMySummary);
 
 // --- Manager Route ---
 router.get('/team-records', checkPermissions(PERMISSIONS.VIEW_TEAM_ATTENDANCE), getTeamAttendance);
+
+// --- Admin Route ---
+router.put('/:id', checkPermissions(PERMISSIONS.MANAGE_USERS), updateAttendance);
 
 module.exports = router;

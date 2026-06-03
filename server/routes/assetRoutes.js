@@ -1,29 +1,33 @@
 const express = require('express');
-const { 
-    getAllAssets,
-    createAsset,
-    updateAsset,
-    deleteAsset,
-    getMyAssets
+const {
+    getAllAssets, getAssetById, createAsset, updateAsset, deleteAsset, getMyAssets, getAssetHistory, getDepreciation, getLicenseSummary, getSummary, exportCSV,
+    addAttachment, removeAttachment,
 } = require('../controllers/assetController');
-
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
-
 const router = express.Router();
 
-// This route is for employees to see their own assets
-router.route('/my-assets').get(protect, getMyAssets);
+router.use(protect);
 
-// All routes below are for admins only
-router.use(protect, checkPermissions(PERMISSIONS.MANAGE_ASSETS));
+router.get('/my-assets', getMyAssets);
+router.get('/summary', checkPermissions(PERMISSIONS.MANAGE_ASSETS), getSummary);
+router.get('/licenses/summary', checkPermissions(PERMISSIONS.MANAGE_ASSETS), getLicenseSummary);
+router.get('/export', checkPermissions(PERMISSIONS.MANAGE_ASSETS), exportCSV);
+
+router.use(checkPermissions(PERMISSIONS.MANAGE_ASSETS));
 
 router.route('/')
     .get(getAllAssets)
     .post(createAsset);
 
 router.route('/:id')
+    .get(getAssetById)
     .put(updateAsset)
     .delete(deleteAsset);
+
+router.get('/:id/history', getAssetHistory);
+router.get('/:id/depreciation', getDepreciation);
+router.post('/:id/attachments', addAttachment);
+router.delete('/:id/attachments/:documentId', removeAttachment);
 
 module.exports = router;

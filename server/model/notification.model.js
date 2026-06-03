@@ -1,34 +1,41 @@
 const mongoose = require('mongoose');
 
 const NotificationSchema = new mongoose.Schema({
-    recipient: { // The user who will receive the notification
+    recipient: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-        index: true, // Add an index for faster querying of a user's notifications
     },
-    sender: { // The user who triggered the notification (optional)
+    sender: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        default: null, // System notifications might not have a sender
+        default: null,
     },
     message: {
         type: String,
         required: [true, 'Please add a notification message'],
     },
-    type: { // To categorize notifications, useful for icons or special handling
+    type: {
         type: String,
-        enum: ['Leave', 'Task', 'Expense', 'Announcement', 'General', 'Kudos'],
+        enum: ['Leave', 'Task', 'Expense', 'Announcement', 'General', 'Kudos', 'Document', 'Asset', 'System'],
         default: 'General',
+    },
+    priority: {
+        type: String,
+        enum: ['low', 'normal', 'high'],
+        default: 'normal',
     },
     isRead: {
         type: Boolean,
         default: false,
     },
-    link: { // A URL to navigate to when the notification is clicked
+    link: {
         type: String,
         default: '#',
     }
 }, { timestamps: true });
+
+NotificationSchema.index({ recipient: 1, createdAt: -1 });
+NotificationSchema.index({ recipient: 1, isRead: 1 });
 
 module.exports = mongoose.model('Notification', NotificationSchema);

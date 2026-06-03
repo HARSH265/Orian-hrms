@@ -1,19 +1,12 @@
 const { getLeaveByDepartment, getExpensesByCategory } = require('../services/reportService');
+const asyncHandler = require('../utils/asyncHandler');
 
-exports.getLeaveByDepartment = async (req, res, next) => {
-    try {
-        const data = await getLeaveByDepartment();
-        res.status(200).json({ success: true, data });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.getLeaveByDepartment = asyncHandler(async (req, res) => {
+    const data = await getLeaveByDepartment();
+    res.status(200).json({ success: true, data });
+});
 
-exports.getExpensesByCategory = async (req, res, next) => {
-    try {
-        const data = await getExpensesByCategory();
-        res.status(200).json({ success: true, data });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.getExpensesByCategory = asyncHandler(async (req, res) => {
+    const data = await getExpensesByCategory();
+    res.status(200).json({ success: true, data });
+});

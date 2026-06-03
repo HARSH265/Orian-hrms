@@ -14,14 +14,19 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 
 // --- THIS IS THE FINAL, CRITICAL SETUP ---
-// 1. Import the "dumb" api instance.
+// 1. Import the main axios instance.
 import api from './services/api';
-// 2. Import the "dumb" setup function.
-import setupInterceptors from './services/apiInterceptors';
 
-// 3. Run the setup function here, ONLY ONCE, after all modules are loaded.
-//    This wires up the interceptors to the single api instance.
-setupInterceptors(api, store);
+// 2. Import the setup function.
+import setupInterceptors from './services/apiInterceptors';
+import { startTokenManager } from './services/tokenManager';
+
+// 3. Guard against multiple initializations
+if (!window.__interceptorsInitialized) {
+  setupInterceptors(api, store);
+  window.__interceptorsInitialized = true;
+  startTokenManager(store);
+}
 // --- END OF CRITICAL SETUP ---
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

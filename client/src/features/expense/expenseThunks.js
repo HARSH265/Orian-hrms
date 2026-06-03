@@ -15,8 +15,9 @@ export const fetchMyExpenses = createAsyncThunk('expense/fetchMy', async (_, { r
 
 export const submitExpense = createAsyncThunk('expense/submit', async (expenseData, { dispatch, rejectWithValue }) => {
   try {
-    await api.post('/expenses', expenseData);
-    dispatch(fetchMyExpenses()); // Refresh the user's personal list after submitting
+    const { data } = await api.post('/expenses', expenseData);
+    await dispatch(fetchMyExpenses());
+    return data.data;
   } catch (error) {
       return rejectWithValue(extractErrorMessage(error));
   }
@@ -38,7 +39,7 @@ export const fetchTeamExpenses = createAsyncThunk('expense/fetchTeam', async (_,
 export const updateTeamExpenseStatus = createAsyncThunk('expense/updateTeamStatus', async ({ expenseId, status }, { dispatch, rejectWithValue }) => {
   try {
     await api.put(`/expenses/${expenseId}/status`, { status });
-    dispatch(fetchTeamExpenses()); // Refresh the team's list after action
+    await dispatch(fetchTeamExpenses());
   } catch (error) {
       return rejectWithValue(extractErrorMessage(error));
   }
@@ -60,7 +61,7 @@ export const fetchAllSystemExpenses = createAsyncThunk('expense/fetchAll', async
 export const adminUpdateExpenseStatus = createAsyncThunk('expense/adminUpdateStatus', async ({ expenseId, status }, { dispatch, rejectWithValue }) => {
   try {
     await api.put(`/expenses/${expenseId}/status`, { status });
-    dispatch(fetchAllSystemExpenses()); // Refresh the GLOBAL list after action
+    await dispatch(fetchAllSystemExpenses());
   } catch (error) {
       return rejectWithValue(extractErrorMessage(error));
   }

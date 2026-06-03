@@ -1,6 +1,20 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 import { extractErrorMessage } from '../../utils/errorExtractor';
+import { startTokenManager } from '../../services/tokenManager';
+
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? match[2] : null;
+}
+
+function getTokenExpiry(token) {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded.exp ? decoded.exp * 1000 : null;
+  } catch { return null; }
+}
 
 /**
  * @desc    Logs a user in and fetches their profile.
@@ -17,8 +31,11 @@ export const loginUser = createAsyncThunk(
       
       if (data.accessToken) {
         localStorage.setItem('accessToken', data.accessToken);
+        document.cookie = `accessToken=${data.accessToken}; path=/; Secure; SameSite=Strict`;
+        const expiry = getTokenExpiry(data.accessToken);
+        dispatch({ type: 'auth/setTokenExpiry', payload: expiry });
         await dispatch(getMe());
-        
+        startTokenManager();
         return { loginSuccess: true };
       }
 

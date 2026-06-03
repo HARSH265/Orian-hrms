@@ -1,52 +1,76 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchMyAttendance, clockIn, clockOut, fetchTeamAttendance } from './attendanceThunks';
+import { fetchMyAttendance, fetchMyAttendanceSummary, clockIn, clockOut, fetchTeamAttendance } from './attendanceThunks';
 
 const initialState = {
   myRecords: [],
   teamRecords: [],
+  summary: null,
   todaysRecord: null,
-  status: 'idle',
+  myStatus: 'idle',
+  teamStatus: 'idle',
+  summaryStatus: 'idle',
   error: null,
 };
 
-const getStartOfTodayISO = () => new Date(new Date().setHours(0,0,0,0)).toISOString().split('T')[0];
+const getTodayUTCDate = () => {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+};
 
 const attendanceSlice = createSlice({
   name: 'attendance',
   initialState,
-  reducers: {},
+  reducers: {
+    clearAttendanceError: (state) => { state.error = null; },
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMyAttendance.pending, (state) => { state.status = 'loading'; })
+      .addCase(fetchMyAttendance.pending, (state) => { state.myStatus = 'loading'; })
       .addCase(fetchMyAttendance.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.myStatus = 'succeeded';
         state.myRecords = action.payload;
-        // Find today's record from the fetched data
-        const todayStr = getStartOfTodayISO();
-        state.todaysRecord = action.payload.find(r => new Date(r.date).toISOString().split('T')[0] === todayStr) || null;
+        const today = getTodayUTCDate().getTime();
+        state.todaysRecord = action.payload.find(r => {
+          const d = new Date(r.date);
+          return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) === today;
+        }) || null;
       })
       .addCase(fetchMyAttendance.rejected, (state, action) => {
-        state.status = 'failed';
+        state.myStatus = 'failed';
         state.error = action.payload;
       })
+      .addCase(fetchMyAttendanceSummary.pending, (state) => { state.summaryStatus = 'loading'; })
+      .addCase(fetchMyAttendanceSummary.fulfilled, (state, action) => {
+        state.summaryStatus = 'succeeded';
+        state.summary = action.payload;
+      })
+      .addCase(fetchMyAttendanceSummary.rejected, (state, action) => {
+        state.summaryStatus = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(fetchTeamAttendance.pending, (state) => { state.teamStatus = 'loading'; })
       .addCase(fetchTeamAttendance.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.teamStatus = 'succeeded';
         state.teamRecords = action.payload;
       })
-      // Matchers for clock in/out
+      .addCase(fetchTeamAttendance.rejected, (state, action) => {
+        state.teamStatus = 'failed';
+        state.error = action.payload;
+      })
       .addMatcher(
         (action) => [clockIn.pending, clockOut.pending].includes(action.type),
-        (state) => { state.status = 'loading'; }
+        (state) => { state.myStatus = 'loading'; }
       )
       .addMatcher(
         (action) => [clockIn.rejected, clockOut.rejected].includes(action.type),
-        (state, action) => { state.status = 'failed'; state.error = action.payload; }
+        (state, action) => { state.myStatus = 'failed'; state.error = action.payload; }
       )
       .addMatcher(
         (action) => [clockIn.fulfilled, clockOut.fulfilled].includes(action.type),
-        (state) => { state.status = 'succeeded'; }
+        (state) => { state.myStatus = 'succeeded'; }
       );
   },
 });
 
+export const { clearAttendanceError } = attendanceSlice.actions;
 export default attendanceSlice.reducer;

@@ -10,6 +10,7 @@ import assetReducer from '../features/asset/assetSlice';
 import taskReducer from '../features/task/taskSlice'; 
 import checklistReducer from '../features/checklist/checklistSlice'
 import expenseReducer from '../features/expense/expenseSlice'
+import expenseCategoryReducer from '../features/expense/expenseCategorySlice'
 import jobReducer from '../features/job/jobSlice'; 
 import referralReducer from '../features/referral/referralSlice';
 import notificationReducer from '../features/notification/notificationSlice';
@@ -40,6 +41,7 @@ export const store = configureStore({
       task: taskReducer,
       checklist: checklistReducer, 
        expense: expenseReducer,
+       expenseCategories: expenseCategoryReducer,
        job: jobReducer,
         referral: referralReducer,
         notification: notificationReducer,

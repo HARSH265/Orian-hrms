@@ -20,9 +20,32 @@ const User = require('./model/user');
 const Conversation = require('./model/conversationModel');
 const Message = require('./model/messageModel');
 const { isBlacklisted } = require('./utils/tokenBlacklist');
+const { setIO } = require('./services/notificationService');
+const { getFeatures } = require('./middleware/featureToggle');
 
 dotenv.config();
 connectDB();
+
+const { startRecurringExpenseJob } = require('./scripts/recurringExpensesJob');
+const { startRecurringTaskJob } = require('./scripts/recurringTasksJob');
+const { startTaskSLAJob } = require('./scripts/taskSLAJob');
+const { startAssetMaintenanceJob } = require('./scripts/assetMaintenanceJob');
+const { startAssetWarrantyJob } = require('./scripts/assetWarrantyJob');
+const { startReviewScheduleJob } = require('./scripts/reviewScheduleJob');
+const { startReviewReminderJob } = require('./scripts/reviewReminderJob');
+const { startDocumentExpiryJob } = require('./scripts/documentExpiryJob');
+const { startDocumentAckJob } = require('./scripts/documentAckJob');
+const { startLeaveBalanceJob } = require('./scripts/leaveBalanceJob');
+startRecurringExpenseJob();
+startRecurringTaskJob();
+startTaskSLAJob();
+startAssetMaintenanceJob();
+startAssetWarrantyJob();
+startReviewScheduleJob();
+startReviewReminderJob();
+startDocumentExpiryJob();
+startDocumentAckJob();
+startLeaveBalanceJob();
 
 const app = express();
 app.set('trust proxy', 1);
@@ -68,6 +91,7 @@ configureRedisAdapter();
 
 // --- REAL-TIME NOTIFICATION UPGRADE: Make `io` globally accessible ---
 app.set('io', io);
+setIO(io);
 // --- END UPGRADE ---
 
 io.use(async (socket, next) => {
@@ -90,9 +114,15 @@ io.use(async (socket, next) => {
 
 const userSocketMap = {};
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
   const userId = socket.user._id.toString();
+  const existingSocketId = userSocketMap[userId];
   userSocketMap[userId] = socket.id;
+
+  await User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() });
+
+  socket.join(userId);
+  socket.broadcast.emit('userOnline', { userId });
 
   socket.use(async (packet, next) => {
     const [event] = packet;
@@ -111,41 +141,125 @@ io.on('connection', (socket) => {
       socket.disconnect(true);
     }
   });
-  
 
-  socket.on('sendMessage', async (messageData) => {
+  socket.on('sendMessage', async (messageData, ack) => {
     try {
-        const { conversationId, text } = messageData;
+        const features = await getFeatures();
+        if (!features.chatEnabled) {
+            if (ack) ack({ error: 'Chat is disabled by administrator.' });
+            return;
+        }
+        const { conversationId, text, attachments, parentMessageId } = messageData;
         const senderId = socket.user._id;
         const conversation = await Conversation.findById(conversationId);
-        if (!conversation) return;
-        const recipientId = conversation.participants.find(p => p.toString() !== senderId.toString());
-        if (!recipientId) return;
+        if (!conversation) {
+            if (ack) ack({ error: 'Conversation not found' });
+            return;
+        }
 
-        const newMessage = new Message({ conversationId, sender: senderId, text });
-        await newMessage.save();
+        const recipientIds = conversation.participants.filter(p => p.toString() !== senderId.toString()).map(p => p.toString());
 
-        conversation.lastMessage = { text, sender: senderId, createdAt: new Date() };
-        await conversation.save();
+        let messageType = 'text';
+        if (attachments && attachments.length > 0) {
+            messageType = attachments.some(a => a.mimeType && a.mimeType.startsWith('image/')) ? 'image' : 'file';
+        }
+
+        const messageDataToSave = { conversationId, sender: senderId, text, messageType };
+        if (attachments && attachments.length > 0) messageDataToSave.attachments = attachments;
+        if (parentMessageId) messageDataToSave.parentMessage = parentMessageId;
+
+        const newMessage = await Message.create(messageDataToSave);
+
+        const lastMessageUpdate = {
+            text,
+            sender: senderId,
+            createdAt: new Date(),
+            messageType,
+        };
+        if (attachments && attachments.length > 0) {
+            lastMessageUpdate.attachments = attachments.map(a => ({
+                fileUrl: a.fileUrl,
+                fileName: a.fileName,
+                mimeType: a.mimeType,
+            }));
+        }
+        await Conversation.findByIdAndUpdate(conversationId, { lastMessage: lastMessageUpdate });
 
         const populatedMessage = await newMessage.populate('sender', 'name profilePictureUrl');
-        const recipientSocketId = userSocketMap[recipientId.toString()];
 
-        if (recipientSocketId) {
-            io.to(recipientSocketId).emit('newMessage', {
-                conversationId,
-                message: populatedMessage
-            });
+        for (const rId of recipientIds) {
+            const sockId = userSocketMap[rId];
+            if (sockId) {
+                io.to(sockId).emit('newMessage', { conversationId, message: populatedMessage });
+            }
         }
-        
+
+        await Message.findByIdAndUpdate(newMessage._id, { deliveredAt: new Date() });
+
+        if (ack) ack({ success: true, message: populatedMessage.toObject() });
     } catch (error) {
         logger.error('Error in sendMessage handler:', error);
+        if (ack) ack({ error: 'Failed to send message' });
     }
   });
 
-  socket.on('disconnect', () => {
+  socket.on('typing', async (data) => {
+    const features = await getFeatures();
+    if (!features.chatEnabled) return;
+    const { conversationId } = data;
+    socket.to(conversationId).emit('typing', { conversationId, userId, name: socket.user.name });
+  });
+
+  socket.on('stopTyping', async (data) => {
+    const features = await getFeatures();
+    if (!features.chatEnabled) return;
+    const { conversationId } = data;
+    socket.to(conversationId).emit('stopTyping', { conversationId, userId });
+  });
+
+  socket.on('markRead', async (data) => {
+    try {
+      const features = await getFeatures();
+      if (!features.chatEnabled) return;
+      const { conversationId, messageIds } = data;
+      const now = new Date();
+      await Message.updateMany(
+        { _id: { $in: messageIds }, sender: { $ne: userId } },
+        { $set: { isRead: true }, $push: { readBy: { user: userId, readAt: now } } }
+      );
+
+      const recipientIds = (await Conversation.findById(conversationId)).participants
+        .filter(p => p.toString() !== userId)
+        .map(p => p.toString());
+
+      for (const rId of recipientIds) {
+        const sockId = userSocketMap[rId];
+        if (sockId) {
+          io.to(sockId).emit('messagesRead', { conversationId, messageIds, readBy: userId, readAt: now });
+        }
+      }
+    } catch (error) {
+      logger.error('Error in markRead handler:', error);
+    }
+  });
+
+  socket.on('joinConversation', (conversationId) => {
+    socket.join(conversationId);
+  });
+
+  socket.on('leaveConversation', (conversationId) => {
+    socket.leave(conversationId);
+  });
+
+  socket.on('disconnect', async () => {
     if (userSocketMap[userId] === socket.id) {
         delete userSocketMap[userId];
+    }
+
+    const userStillConnected = Object.keys(userSocketMap).some(id => id === userId);
+    if (!userStillConnected) {
+        await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
+        io.emit('userOffline', { userId, lastSeen: new Date() });
     }
   });
 });

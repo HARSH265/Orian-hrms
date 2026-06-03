@@ -90,7 +90,12 @@ const UserSchema = new mongoose.Schema({
     passwordResetToken: { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
 
-    isActive: { type: Boolean, default: true }, 
+    isActive: { type: Boolean, default: true },
+
+    // Chat / Presence
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date },
+    blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
 }, { timestamps: true });
 

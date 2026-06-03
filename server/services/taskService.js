@@ -1,13 +1,12 @@
 const mongoose = require('mongoose');
 const Task = require('../model/task.model');
 const User = require('../model/user');
-const Document = require('../model/Document'); // for attachments
+const Document = require('../model/Document');
+const AuditLog = require('../model/AuditLog');
 const { createAuditLog } = require('./auditLogService');
 const { createNotification } = require('./notificationService');
+const { getDescendantIds } = require('../utils/teamTree');
 
-/**
- * Helper to build task query (same as controller).
- */
 const buildTaskQuery = (baseQuery, queryParams) => {
     let query = { ...baseQuery };
     const { status, priority, assignee, search } = queryParams;
@@ -18,15 +17,7 @@ const buildTaskQuery = (baseQuery, queryParams) => {
     return query;
 };
 
-/**
- * Create a new task.
- * Expects the Express request object to extract body, user, ip.
- */
-const createTask = async (req) => {
-    const { title, description, priority, assignees, dueDate, attachments, timeEstimate, customFieldValues } = req.body;
-    const creator = req.user;
-
-    // Validate assignees
+const createTask = async ({ title, description, priority, assignees, dueDate, attachments, timeEstimate, customFieldValues, userId, userName, userRole, userManagerId, ip }) => {
     if (!assignees || !Array.isArray(assignees) || assignees.length === 0) {
         const err = new Error('Assignees must be a non-empty array.');
         err.status = 400;
@@ -39,20 +30,19 @@ const createTask = async (req) => {
         throw err;
     }
 
-    // Authorization check – replicated from controller logic.
     for (const assigneeDoc of assigneeDocs) {
         let isAuthorized = false;
         const roleHierarchy = ['employee', 'manager', 'hr', 'super-admin'];
-        const creatorRoleIndex = roleHierarchy.indexOf(creator.role);
-        const assigneeRoleIndex = roleHierarchy.indexOf(assigneeDoc.role);
-        if (creator.role === 'employee' && creator.manager?.toString() === assigneeDoc._id.toString()) { isAuthorized = true; }
-        if (creator.role === 'manager') {
-            const isDirectReport = assigneeDoc.manager?.toString() === creator._id.toString();
-            const isAssigneeHr = assigneeDoc.role === 'hr';
+        const creatorRoleIndex = roleHierarchy.indexOf(userRole);
+        const assigneeRoleIndex = roleHierarchy.indexOf(assigneeDoc.systemRole);
+        if (userRole === 'employee' && userManagerId?.toString() === assigneeDoc._id.toString()) { isAuthorized = true; }
+        if (userRole === 'manager') {
+            const isDirectReport = assigneeDoc.manager?.toString() === userId;
+            const isAssigneeHr = assigneeDoc.systemRole === 'hr';
             if (isDirectReport || isAssigneeHr) { isAuthorized = true; }
         }
-        if (creator.role === 'hr' || creator.role === 'super-admin') {
-            if (assigneeRoleIndex <= creatorRoleIndex && creator._id.toString() !== assigneeDoc._id.toString()) { isAuthorized = true; }
+        if (userRole === 'hr' || userRole === 'super-admin') {
+            if (assigneeRoleIndex <= creatorRoleIndex && userId !== assigneeDoc._id.toString()) { isAuthorized = true; }
         }
         if (!isAuthorized) {
             const err = new Error(`You are not authorized to assign a task to ${assigneeDoc.name}.`);
@@ -67,19 +57,18 @@ const createTask = async (req) => {
         priority,
         assignees,
         dueDate,
-        creator: creator.id,
+        creator: userId,
         timeEstimate: timeEstimate || 0,
         attachments: [],
-        customFieldValues: customFieldValues || []
+        customFieldValues: customFieldValues || [],
     };
 
-    // Handle optional attachments
     if (attachments && Array.isArray(attachments) && attachments.length > 0) {
         const documentPromises = attachments.map(att => Document.create({
             title: att.originalName,
             fileUrl: att.url,
             category: 'Task Attachment',
-            uploadedBy: creator.id
+            uploadedBy: userId,
         }));
         const createdDocuments = await Promise.all(documentPromises);
         taskData.attachments = createdDocuments.map(doc => doc._id);
@@ -87,46 +76,39 @@ const createTask = async (req) => {
 
     const task = await Task.create(taskData);
 
-    // Audit log
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'TASK_CREATED',
         target: { id: task._id, type: 'Task' },
         details: {
             title: task.title,
             assignedTo: assigneeDocs.map(d => d.name).join(', '),
             attachmentsCount: task.attachments.length,
-            timeEstimate: task.timeEstimate
+            timeEstimate: task.timeEstimate,
         },
-        ipAddress: req.ip
+        ipAddress: ip,
     });
 
-    // Notification
     await createNotification({
         taskId: task._id,
-        sender: creator.id,
-        message: `${creator.name} assigned you a new task: "${title}"`,
+        sender: userId,
+        message: `${userName} assigned you a new task: "${title}"`,
         link: '/tasks',
         type: 'Task',
-    }, req);
+    });
 
-    // Populate before returning
     await task.populate('assignees', 'name profilePictureUrl');
     await task.populate('attachments', 'title fileUrl');
     return task;
 };
 
-/**
- * Create a sub‑task under a parent task.
- */
-const createSubTask = async (req) => {
-    const parentTask = await Task.findById(req.params.id);
+const createSubTask = async ({ taskId, title, assignees, userId, userRole, ip }) => {
+    const parentTask = await Task.findById(taskId);
     if (!parentTask) {
         const err = new Error('Parent task not found.');
         err.status = 404;
         throw err;
     }
-    // Check nesting depth (max 3 levels)
     if (parentTask._id) {
         let depth = 0;
         let currentParent = parentTask.parentTask;
@@ -142,41 +124,36 @@ const createSubTask = async (req) => {
             throw err;
         }
     }
-    // Security check – same as controller
-    const isCreator = parentTask.creator.toString() === req.user.id.toString();
-    const isAssignee = parentTask.assignees.some(id => id.toString() === req.user.id.toString());
-    if (!isCreator && !isAssignee && req.user.role !== 'super-admin') {
+    const isCreator = parentTask.creator.toString() === userId;
+    const isAssignee = parentTask.assignees.some(id => id.toString() === userId);
+    if (!isCreator && !isAssignee && userRole !== 'super-admin') {
         const err = new Error('You are not authorized to add sub‑tasks to this parent task.');
         err.status = 403;
         throw err;
     }
-    const { title, assignees } = req.body;
     const subTask = await Task.create({
         title,
         assignees,
-        creator: req.user.id,
+        creator: userId,
         parentTask: parentTask._id,
         priority: parentTask.priority,
-        dueDate: parentTask.dueDate
+        dueDate: parentTask.dueDate,
     });
     parentTask.subTasks.push(subTask._id);
     await parentTask.save();
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'SUBTASK_CREATED',
         target: { id: subTask._id, type: 'Task' },
         details: { title: subTask.title, parent: parentTask.title },
-        ipAddress: req.ip
+        ipAddress: ip,
     });
     await subTask.populate('assignees', 'name profilePictureUrl');
     return subTask;
 };
 
-/**
- * Retrieve a single task by ID with full details and security checks.
- */
-const getTaskById = async (req) => {
-    const task = await Task.findById(req.params.id)
+const getTaskById = async ({ taskId, userId, userRole }) => {
+    const task = await Task.findById(taskId)
         .populate('creator', 'name')
         .populate('assignees', 'name profilePictureUrl manager')
         .populate('attachments', 'title fileUrl')
@@ -185,7 +162,7 @@ const getTaskById = async (req) => {
         .populate({
             path: 'subTasks',
             select: 'title status assignees',
-            populate: { path: 'assignees', select: 'name profilePictureUrl' }
+            populate: { path: 'assignees', select: 'name profilePictureUrl' },
         })
         .lean();
     if (!task) {
@@ -193,28 +170,27 @@ const getTaskById = async (req) => {
         err.status = 404;
         throw err;
     }
-    const isCreator = task.creator._id.toString() === req.user.id.toString();
-    const isAssignee = task.assignees.some(a => a._id.toString() === req.user.id.toString());
-    const isManagerOfAssignee = task.assignees.some(a => a.manager?.toString() === req.user.id.toString());
-    if (!isCreator && !isAssignee && !isManagerOfAssignee && req.user.role !== 'super-admin' && req.user.role !== 'hr') {
-        const err = new Error('Not authorized to view this task');
-        err.status = 403;
-        throw err;
+    const isCreator = task.creator._id.toString() === userId;
+    const isAssignee = task.assignees.some(a => a._id.toString() === userId);
+    const isManagerOfAssignee = task.assignees.some(a => a.manager?.toString() === userId);
+    if (!isCreator && !isAssignee && !isManagerOfAssignee) {
+        if (userRole !== 'super-admin' && userRole !== 'hr') {
+            const err = new Error('Not authorized to view this task');
+            err.status = 403;
+            throw err;
+        }
     }
     return task;
 };
 
-/**
- * Get tasks assigned to the logged‑in user.
- */
-const getMyTasks = async (req) => {
-    const baseQuery = { assignees: req.user.id };
-    const finalQuery = buildTaskQuery(baseQuery, req.query);
-    const sortBy = req.query.sortBy || 'dueDate';
-    const order = req.query.order === 'desc' ? -1 : 1;
+const getMyTasks = async ({ userId, query }) => {
+    const baseQuery = { assignees: userId };
+    const finalQuery = buildTaskQuery(baseQuery, query);
+    const sortBy = query.sortBy || 'dueDate';
+    const order = query.order === 'desc' ? -1 : 1;
     const sortOptions = { [sortBy]: order };
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const page = parseInt(query.page, 10) || 1;
+    const limit = parseInt(query.limit, 10) || 10;
     const skip = (page - 1) * limit;
     const [tasks, totalTasks] = await Promise.all([
         Task.find(finalQuery)
@@ -226,25 +202,20 @@ const getMyTasks = async (req) => {
             .skip(skip)
             .limit(limit)
             .lean(),
-        Task.countDocuments(finalQuery)
+        Task.countDocuments(finalQuery),
     ]);
     return { tasks, totalTasks, page, limit };
 };
 
-/**
- * Get tasks for the manager's team.
- */
-const getTeamTasks = async (req) => {
-    // Debug logs removed for service layer
-    const teamMembers = await User.find({ manager: req.user.id }).select('_id');
-    const teamMemberIds = teamMembers.map(member => member._id);
+const getTeamTasks = async ({ userId, query }) => {
+    const teamMemberIds = await getDescendantIds(userId);
     const baseQuery = { assignees: { $in: teamMemberIds } };
-    const finalQuery = buildTaskQuery(baseQuery, req.query);
-    const sortBy = req.query.sortBy || 'createdAt';
-    const order = req.query.order === 'asc' ? 1 : -1;
+    const finalQuery = buildTaskQuery(baseQuery, query);
+    const sortBy = query.sortBy || 'createdAt';
+    const order = query.order === 'asc' ? 1 : -1;
     const sortOptions = { [sortBy]: order };
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
+    const page = parseInt(query.page, 10) || 1;
+    const limit = parseInt(query.limit, 10) || 10;
     const skip = (page - 1) * limit;
     const [tasks, totalTasks] = await Promise.all([
         Task.find(finalQuery)
@@ -256,22 +227,19 @@ const getTeamTasks = async (req) => {
             .skip(skip)
             .limit(limit)
             .lean(),
-        Task.countDocuments(finalQuery)
+        Task.countDocuments(finalQuery),
     ]);
     return { tasks, totalTasks, page, limit };
 };
 
-/**
- * Get all tasks (admin view).
- */
-const getAllTasks = async (req) => {
+const getAllTasks = async ({ query }) => {
     const baseQuery = {};
-    const finalQuery = buildTaskQuery(baseQuery, req.query);
-    const sortBy = req.query.sortBy || 'createdAt';
-    const order = req.query.order === 'asc' ? 1 : -1;
+    const finalQuery = buildTaskQuery(baseQuery, query);
+    const sortBy = query.sortBy || 'createdAt';
+    const order = query.order === 'asc' ? 1 : -1;
     const sortOptions = { [sortBy]: order };
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 15;
+    const page = parseInt(query.page, 10) || 1;
+    const limit = parseInt(query.limit, 10) || 15;
     const skip = (page - 1) * limit;
     const [tasks, totalTasks] = await Promise.all([
         Task.find(finalQuery)
@@ -283,127 +251,112 @@ const getAllTasks = async (req) => {
             .skip(skip)
             .limit(limit)
             .lean(),
-        Task.countDocuments(finalQuery)
+        Task.countDocuments(finalQuery),
     ]);
     return { tasks, totalTasks, page, limit };
 };
 
-/**
- * Update a task's core details (admin/creator).
- */
-const updateTask = async (req) => {
-    let task = await Task.findById(req.params.id);
+const updateTask = async ({ taskId, body, userId, userRole, ip }) => {
+    let task = await Task.findById(taskId);
     if (!task) {
         const err = new Error('Task not found');
         err.status = 404;
         throw err;
     }
-    const isCreator = task.creator.toString() === req.user.id.toString();
-    if (!isCreator && req.user.role !== 'super-admin' && req.user.role !== 'hr') {
+    const isCreator = task.creator.toString() === userId;
+    if (!isCreator && userRole !== 'super-admin' && userRole !== 'hr') {
         const err = new Error('Not authorized to edit this task details.');
         err.status = 403;
         throw err;
     }
-    // Whitelist allowed fields to prevent mass assignment
     const allowedFields = ['title', 'description', 'priority', 'dueDate', 'timeEstimate', 'assignees', 'customFieldValues'];
     const filteredUpdates = {};
     allowedFields.forEach(field => {
-        if (req.body[field] !== undefined) {
-            filteredUpdates[field] = req.body[field];
+        if (body[field] !== undefined) {
+            filteredUpdates[field] = body[field];
         }
     });
-    task = await Task.findByIdAndUpdate(req.params.id, filteredUpdates, { new: true, runValidators: true });
+    task = await Task.findByIdAndUpdate(taskId, filteredUpdates, { new: true, runValidators: true });
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'TASK_UPDATED',
         target: { id: task._id, type: 'Task' },
-        details: { updatedFields: Object.keys(req.body) },
-        ipAddress: req.ip
+        details: { updatedFields: Object.keys(body) },
+        ipAddress: ip,
     });
     await task.populate('assignees', 'name profilePictureUrl');
     await task.populate('attachments', 'title fileUrl');
     return task;
 };
 
-/**
- * Delete a task (creator or super‑admin).
- */
-const deleteTask = async (req) => {
-    const task = await Task.findById(req.params.id);
+const deleteTask = async ({ taskId, userId, userRole, ip }) => {
+    const task = await Task.findById(taskId);
     if (!task) {
         const err = new Error('Task not found');
         err.status = 404;
         throw err;
     }
-    if (task.creator.toString() !== req.user.id.toString() && req.user.role !== 'super-admin') {
-        const err = new Error('Not authorized to delete this task');
-        err.status = 403;
-        throw err;
+    if (task.creator.toString() !== userId) {
+        if (userRole !== 'super-admin') {
+            const err = new Error('Not authorized to delete this task');
+            err.status = 403;
+            throw err;
+        }
     }
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'TASK_DELETED',
         target: { id: task._id, type: 'Task' },
         details: { title: task.title },
-        ipAddress: req.ip
+        ipAddress: ip,
     });
     await Task.findByIdAndDelete(task._id);
     return { message: 'Task deleted' };
 };
 
-/**
- * Add a comment to a task.
- * Returns the task.comments array after population.
- */
-const addComment = async (req) => {
-    const { text } = req.body;
-    const task = await Task.findById(req.params.id);
+const addComment = async ({ taskId, text, userId, userName, ip }) => {
+    const task = await Task.findById(taskId);
     if (!task) {
         const err = new Error('Task not found');
         err.status = 404;
         throw err;
     }
-    const isCreator = task.creator.toString() === req.user.id.toString();
-    const isAssignee = task.assignees.some(id => id.toString() === req.user.id.toString());
+    const isCreator = task.creator.toString() === userId;
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
     if (!isCreator && !isAssignee) {
         const err = new Error('You are not authorized to comment on this task.');
         err.status = 403;
         throw err;
     }
-    task.comments.push({ text, author: req.user.id });
+    task.comments.push({ text, author: userId });
     await task.save();
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'TASK_COMMENT_ADDED',
         target: { id: task._id, type: 'Task' },
         details: { comment: text.substring(0, 50) + '...' },
-        ipAddress: req.ip
+        ipAddress: ip,
     });
     await createNotification({
         taskId: task._id,
-        sender: req.user.id,
-        message: `${req.user.name} commented on the task: "${task.title}"`,
+        sender: userId,
+        message: `${userName} commented on the task: "${task.title}"`,
         link: '/tasks',
         type: 'Task',
-    }, req);
+    });
     await task.populate('comments.author', 'name profilePictureUrl');
     return task.comments;
 };
 
-/**
- * Add an attachment to a task.
- * Returns the task.attachments array after population.
- */
-const addAttachment = async (req) => {
-    const { url, originalName } = req.body;
-    const task = await Task.findById(req.params.id);
+const addAttachment = async ({ taskId, url, originalName, userId, ip }) => {
+    const task = await Task.findById(taskId);
     if (!task) {
         const err = new Error('Task not found');
         err.status = 404;
         throw err;
     }
-    const isCreator = task.creator.toString() === req.user.id.toString();
-    const isAssignee = task.assignees.some(id => id.toString() === req.user.id.toString());
+    const isCreator = task.creator.toString() === userId;
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
     if (!isCreator && !isAssignee) {
         const err = new Error('You are not authorized to add attachments to this task.');
         err.status = 403;
@@ -413,28 +366,605 @@ const addAttachment = async (req) => {
         title: originalName,
         fileUrl: url,
         category: 'Task Attachment',
-        uploadedBy: req.user.id
+        uploadedBy: userId,
     });
     task.attachments.push(newDocument._id);
     await task.save();
     await createAuditLog({
-        actor: req.user.id,
+        actor: userId,
         action: 'TASK_ATTACHMENT_ADDED',
         target: { id: task._id, type: 'Task' },
         details: { documentId: newDocument._id, filename: originalName },
-        ipAddress: req.ip
+        ipAddress: ip,
     });
     await task.populate('attachments', 'title fileUrl');
     return task.attachments;
 };
 
-/**
- * Placeholder for other task operations – currently unimplemented.
- */
-const notImplemented = async (name) => {
-    const err = new Error(`${name} not yet implemented in taskService.`);
-    err.status = 501;
-    throw err;
+const updateTaskStatus = async ({ taskId, status: newStatus, userId, userName, userRole, ip }) => {
+    const task = await Task.findById(taskId).populate('dependsOn', 'status');
+    if (!task) {
+        const err = new Error('Task not found');
+        err.status = 404;
+        throw err;
+    }
+    if (['In Progress', 'Done'].includes(newStatus)) {
+        const openDependencies = task.dependsOn.filter(dep => dep.status !== 'Done');
+        if (openDependencies.length > 0) {
+            if (task.status !== 'Blocked') {
+                task.status = 'Blocked';
+                await task.save();
+            }
+            const err = new Error(`Cannot start task. It is blocked by ${openDependencies.length} open task(s).`);
+            err.status = 400;
+            throw err;
+        }
+    }
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
+    const isCreator = task.creator.toString() === userId;
+    const isAdmin = userRole === 'super-admin' || userRole === 'hr';
+    if (task.status === 'Done') {
+        if (!isCreator && !isAdmin) {
+            const err = new Error('Task is complete. Assignees must request to re-open.');
+            err.status = 403;
+            throw err;
+        }
+    } else {
+        if (!isAssignee && !isCreator && !isAdmin) {
+            const err = new Error('You are not authorized to update the status of this task.');
+            err.status = 403;
+            throw err;
+        }
+    }
+    const oldStatus = task.status;
+    task.status = newStatus;
+    await task.save();
+    if (oldStatus !== 'Done' && newStatus === 'Done') {
+        const tasksToUnblock = await Task.find({ _id: { $in: task.blocking } }).populate('dependsOn', 'status');
+        for (const taskToUpdate of tasksToUnblock) {
+            const canBeUnblocked = taskToUpdate.dependsOn.every(dep => dep.status === 'Done');
+            if (canBeUnblocked) {
+                taskToUpdate.status = 'To Do';
+                await taskToUpdate.save();
+            }
+        }
+    }
+    await createAuditLog({
+        actor: userId,
+        action: 'TASK_STATUS_UPDATED',
+        target: { id: task._id, type: 'Task' },
+        details: { title: task.title, from: oldStatus, to: newStatus },
+        ipAddress: ip,
+    });
+    if (task.status === 'Done' && !isCreator) {
+        await createNotification({
+            taskId: task._id,
+            sender: userId,
+            message: `${userName} completed the task: "${task.title}"`,
+            link: '/tasks',
+            type: 'Task',
+        });
+    } else if (oldStatus === 'Done' && task.status !== 'Done') {
+        await createNotification({
+            taskId: task._id,
+            sender: userId,
+            message: `${userName} re-opened the task: "${task.title}"`,
+            link: '/tasks',
+            type: 'Task',
+        });
+    }
+    await task.populate('assignees', 'name profilePictureUrl');
+    await task.populate('attachments', 'title fileUrl');
+    return task;
+};
+
+const logTimeToTask = async ({ taskId, timeSpent, date, notes, userId, ip }) => {
+    if (!timeSpent || !date) {
+        const err = new Error('Time spent and date are required.');
+        err.status = 400;
+        throw err;
+    }
+    if (timeSpent <= 0 || timeSpent > 24) {
+        const err = new Error('Time spent must be between 0 and 24 hours.');
+        err.status = 400;
+        throw err;
+    }
+    if (new Date(date) > new Date()) {
+        const err = new Error('Cannot log time for future dates.');
+        err.status = 400;
+        throw err;
+    }
+    const task = await Task.findById(taskId);
+    if (!task) {
+        const err = new Error('Task not found.');
+        err.status = 404;
+        throw err;
+    }
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
+    if (!isAssignee) {
+        const err = new Error('Only an assignee can log time on this task.');
+        err.status = 403;
+        throw err;
+    }
+    task.timeLogs.push({ user: userId, timeSpent: parseFloat(timeSpent), date, notes });
+    task.totalTimeSpent = task.timeLogs.reduce((acc, log) => acc + log.timeSpent, 0);
+    await task.save();
+    await createAuditLog({
+        actor: userId, action: 'TASK_TIME_LOGGED',
+        target: { id: task._id, type: 'Task' },
+        details: { timeSpent: `${timeSpent}h, total: ${task.totalTimeSpent}h` },
+        ipAddress: ip,
+    });
+    return task;
+};
+
+const updateTaskDependencies = async ({ taskId, dependsOn: newDependencyIds, userId }) => {
+    const currentTask = await Task.findById(taskId);
+    if (!currentTask) {
+        const err = new Error('Task not found.');
+        err.status = 404;
+        throw err;
+    }
+    const isCreator = currentTask.creator.toString() === userId;
+    const isAssignee = currentTask.assignees.some(id => id.toString() === userId);
+    if (!isCreator && !isAssignee) {
+        const err = new Error('Not authorized to manage dependencies for this task.');
+        err.status = 403;
+        throw err;
+    }
+    const hasCycle = async (taskId, dependsOnIds) => {
+        const visited = new Set();
+        const queue = [...dependsOnIds.map(id => id.toString())];
+        while (queue.length > 0) {
+            const current = queue.shift();
+            if (current === taskId.toString()) return true;
+            if (visited.has(current)) continue;
+            visited.add(current);
+            const depTask = await Task.findById(current).select('dependsOn').lean();
+            if (depTask && depTask.dependsOn) {
+                queue.push(...depTask.dependsOn.map(id => id.toString()));
+            }
+        }
+        return false;
+    };
+    if (await hasCycle(currentTask._id, newDependencyIds)) {
+        const err = new Error('Adding these dependencies would create a circular dependency.');
+        err.status = 400;
+        throw err;
+    }
+    const oldDependencyIds = currentTask.dependsOn.map(id => id.toString());
+    const session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+        currentTask.dependsOn = newDependencyIds;
+        await currentTask.save({ session });
+        const idsToRemoveFrom = oldDependencyIds.filter(id => !newDependencyIds.includes(id));
+        if (idsToRemoveFrom.length > 0) {
+            await Task.updateMany(
+                { _id: { $in: idsToRemoveFrom } },
+                { $pull: { blocking: currentTask._id } },
+                { session },
+            );
+        }
+        const idsToAddTo = newDependencyIds.filter(id => !oldDependencyIds.includes(id));
+        if (idsToAddTo.length > 0) {
+            await Task.updateMany(
+                { _id: { $in: idsToAddTo } },
+                { $addToSet: { blocking: currentTask._id } },
+                { session },
+            );
+        }
+    });
+    session.endSession();
+    const updatedTask = await Task.findById(taskId).populate('dependsOn', 'title status');
+    return updatedTask;
+};
+
+const requestTaskReopen = async ({ taskId, reason, userId, userName, ip }) => {
+    if (!reason) {
+        const err = new Error('A reason is required to request re-opening.');
+        err.status = 400;
+        throw err;
+    }
+    const task = await Task.findById(taskId);
+    if (!task) {
+        const err = new Error('Task not found.');
+        err.status = 404;
+        throw err;
+    }
+    if (task.status !== 'Done') {
+        const err = new Error('Only completed tasks can be requested to re-open.');
+        err.status = 400;
+        throw err;
+    }
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
+    if (!isAssignee) {
+        const err = new Error('Only an assignee can make this request.');
+        err.status = 403;
+        throw err;
+    }
+    task.reopenRequests.push({ requestedBy: userId, reason });
+    await task.save();
+    await createAuditLog({
+        actor: userId, action: 'TASK_REOPEN_REQUESTED',
+        target: { id: task._id, type: 'Task' },
+        details: { reason }, ipAddress: ip,
+    });
+    await createNotification({
+        recipient: task.creator, sender: userId,
+        message: `${userName} requested to re-open task: "${task.title}"`,
+        link: '/tasks', type: 'Task',
+    });
+    return { message: 'Re-open request submitted successfully.' };
+};
+
+const resolveTaskReopen = async ({ requestId, status, userId, userName, userRole, ip }) => {
+    if (!['Approved', 'Rejected'].includes(status)) {
+        const err = new Error('Invalid resolution status.');
+        err.status = 400;
+        throw err;
+    }
+    const task = await Task.findOne({ 'reopenRequests._id': requestId });
+    if (!task) {
+        const err = new Error('Re-open request not found.');
+        err.status = 404;
+        throw err;
+    }
+    const isCreator = task.creator.toString() === userId;
+    if (!isCreator && userRole !== 'super-admin' && userRole !== 'hr') {
+        const err = new Error('Only the task creator can resolve this request.');
+        err.status = 403;
+        throw err;
+    }
+    const request = task.reopenRequests.id(requestId);
+    if (request.status !== 'Pending') {
+        const err = new Error('This request has already been resolved.');
+        err.status = 400;
+        throw err;
+    }
+    request.status = status;
+    request.resolvedBy = userId;
+    request.resolvedAt = Date.now();
+    let messageForNotification = '';
+    if (status === 'Approved') {
+        task.status = 'In Progress';
+        messageForNotification = `${userName} approved your request to re-open: "${task.title}"`;
+    } else {
+        messageForNotification = `${userName} rejected your request to re-open: "${task.title}"`;
+    }
+    await task.save();
+    await createAuditLog({
+        actor: userId, action: `TASK_REOPEN_${status.toUpperCase()}`,
+        target: { id: task._id, type: 'Task' },
+        details: { requestId }, ipAddress: ip,
+    });
+    await createNotification({
+        recipient: request.requestedBy, sender: userId,
+        message: messageForNotification, link: '/tasks', type: 'Task',
+    });
+    return { message: `Request has been ${status.toLowerCase()}.` };
+};
+
+const toggleTaskSubscription = async ({ taskId, userId }) => {
+    const task = await Task.findById(taskId);
+    if (!task) {
+        const err = new Error('Task not found.');
+        err.status = 404;
+        throw err;
+    }
+    const isSubscribed = task.subscribers.some(subscriberId => subscriberId.toString() === userId);
+    let message = '';
+    if (isSubscribed) {
+        await Task.updateOne({ _id: task._id }, { $pull: { subscribers: userId } });
+        message = 'You have unsubscribed from this task.';
+    } else {
+        await Task.updateOne({ _id: task._id }, { $addToSet: { subscribers: userId } });
+        message = 'You are now subscribed to this task.';
+    }
+    const updatedTask = await Task.findById(taskId);
+    return { task: updatedTask, message };
+};
+
+const computeNextDueDate = (interval, fromDate) => {
+    const next = new Date(fromDate);
+    switch (interval) {
+        case 'daily': next.setDate(next.getDate() + 1); break;
+        case 'weekly': next.setDate(next.getDate() + 7); break;
+        case 'monthly': next.setMonth(next.getMonth() + 1); break;
+        case 'yearly': next.setFullYear(next.getFullYear() + 1); break;
+    }
+    return next;
+};
+
+const bulkUpdateStatus = async (taskIds, status, userId) => {
+    const tasks = await Task.find({ _id: { $in: taskIds } });
+    if (tasks.length !== taskIds.length) {
+        const err = new Error('One or more tasks not found.');
+        err.status = 404;
+        throw err;
+    }
+    const authorizedIds = tasks
+        .filter(t => {
+            const isAssignee = t.assignees.some(id => id.toString() === userId);
+            const isCreator = t.creator.toString() === userId;
+            return isAssignee || isCreator;
+        })
+        .map(t => t._id);
+    if (authorizedIds.length === 0) {
+        const err = new Error('You are not authorized to update any of these tasks.');
+        err.status = 403;
+        throw err;
+    }
+    await Task.updateMany(
+        { _id: { $in: authorizedIds } },
+        { $set: { status } },
+    );
+    return { updatedCount: authorizedIds.length, skippedCount: taskIds.length - authorizedIds.length };
+};
+
+const bulkAssign = async (taskIds, assigneeId, userId) => {
+    const assignee = await User.findById(assigneeId);
+    if (!assignee) {
+        const err = new Error('Assignee not found.');
+        err.status = 404;
+        throw err;
+    }
+    const tasks = await Task.find({ _id: { $in: taskIds } });
+    if (tasks.length !== taskIds.length) {
+        const err = new Error('One or more tasks not found.');
+        err.status = 404;
+        throw err;
+    }
+    const authorizedIds = tasks
+        .filter(t => {
+            const isCreator = t.creator.toString() === userId;
+            return isCreator || userId === 'super-admin';
+        })
+        .map(t => t._id);
+    if (authorizedIds.length === 0) {
+        const err = new Error('You are not authorized to reassign any of these tasks.');
+        err.status = 403;
+        throw err;
+    }
+    await Task.updateMany(
+        { _id: { $in: authorizedIds } },
+        { $addToSet: { assignees: assigneeId } },
+    );
+    return { updatedCount: authorizedIds.length, skippedCount: taskIds.length - authorizedIds.length };
+};
+
+const bulkDelete = async (taskIds, userId) => {
+    const tasks = await Task.find({ _id: { $in: taskIds } });
+    if (tasks.length !== taskIds.length) {
+        const err = new Error('One or more tasks not found.');
+        err.status = 404;
+        throw err;
+    }
+    const authorizedIds = tasks
+        .filter(t => {
+            const isCreator = t.creator.toString() === userId;
+            return isCreator;
+        })
+        .map(t => t._id);
+    if (authorizedIds.length === 0) {
+        const err = new Error('You are not authorized to delete any of these tasks.');
+        err.status = 403;
+        throw err;
+    }
+    await Task.deleteMany({ _id: { $in: authorizedIds } });
+    return { deletedCount: authorizedIds.length, skippedCount: taskIds.length - authorizedIds.length };
+};
+
+const getTaskDashboard = async (userId) => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [totalTasks, completed30d, overdueTasks, allTasks] = await Promise.all([
+        Task.countDocuments({ assignees: userId }),
+        Task.countDocuments({ assignees: userId, status: 'Done', updatedAt: { $gte: thirtyDaysAgo } }),
+        Task.countDocuments({ assignees: userId, dueDate: { $lt: now }, status: { $ne: 'Done' } }),
+        Task.find({ assignees: userId }).select('status priority dueDate totalTimeSpent').lean(),
+    ]);
+
+    const byPriority = { Low: 0, Medium: 0, High: 0 };
+    const byStatus = { 'To Do': 0, 'In Progress': 0, Done: 0, Blocked: 0 };
+    let totalTimeSpent = 0;
+
+    for (const t of allTasks) {
+        byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
+        byStatus[t.status] = (byStatus[t.status] || 0) + 1;
+        totalTimeSpent += t.totalTimeSpent || 0;
+    }
+
+    const weeklyCompletions = await Task.aggregate([
+        { $match: { assignees: userId, status: 'Done', updatedAt: { $gte: thirtyDaysAgo } } },
+        { $group: { _id: { $week: '$updatedAt' }, count: { $sum: 1 } } },
+        { $sort: { '_id': 1 } },
+    ]);
+
+    return {
+        totalTasks,
+        completedLast30Days: completed30d,
+        overdueTasks,
+        totalTimeSpent: Math.round(totalTimeSpent * 100) / 100,
+        byPriority,
+        byStatus,
+        weeklyCompletions,
+    };
+};
+
+const getTaskActivityFeed = async (taskId, userId) => {
+    const task = await Task.findById(taskId)
+        .select('comments timeLogs reopenRequests title')
+        .populate('comments.author', 'name')
+        .populate('timeLogs.user', 'name')
+        .lean();
+    if (!task) {
+        const err = new Error('Task not found');
+        err.status = 404;
+        throw err;
+    }
+
+    const auditLogs = await AuditLog.find({ 'target.id': task._id, 'target.type': 'Task' })
+        .populate('actor', 'name')
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .lean();
+
+    const embeddedEvents = [];
+    for (const c of task.comments || []) {
+        embeddedEvents.push({
+            type: 'comment',
+            actor: c.author,
+            description: `commented: "${c.text.substring(0, 80)}"`,
+            createdAt: c.createdAt,
+        });
+    }
+    for (const t of task.timeLogs || []) {
+        embeddedEvents.push({
+            type: 'time_log',
+            actor: t.user,
+            description: `logged ${t.timeSpent}h`,
+            createdAt: t.createdAt,
+        });
+    }
+    for (const r of task.reopenRequests || []) {
+        embeddedEvents.push({
+            type: 'reopen_request',
+            actor: { _id: r.requestedBy, name: 'Unknown' },
+            description: `requested re-open: "${r.reason.substring(0, 80)}" (${r.status})`,
+            createdAt: r.createdAt,
+        });
+    }
+
+    const formattedAudit = auditLogs.map(a => ({
+        type: 'audit',
+        actor: a.actor,
+        action: a.action,
+        description: a.details?.title
+            ? `${a.action.replace('TASK_', '').replace(/_/g, ' ').toLowerCase()} for "${a.details.title}"`
+            : a.action.replace(/_/g, ' ').toLowerCase(),
+        details: a.details,
+        createdAt: a.createdAt,
+    }));
+
+    const feed = [...formattedAudit, ...embeddedEvents]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    return feed;
+};
+
+const exportTasksCSV = async (userId, queryParams) => {
+    const filter = { assignees: userId };
+    const { status, priority } = queryParams;
+    if (status) filter.status = status;
+    if (priority) filter.priority = priority;
+
+    const tasks = await Task.find(filter)
+        .populate('assignees', 'name')
+        .populate('creator', 'name')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const header = 'Title,Status,Priority,Assignees,Creator,Due Date,Created At,Time Estimate,Time Spent\n';
+    const rows = tasks.map(t => {
+        const assignees = (t.assignees || []).map(a => a.name).join('; ');
+        const dueDate = t.dueDate ? new Date(t.dueDate).toISOString().split('T')[0] : '';
+        const createdAt = new Date(t.createdAt).toISOString().split('T')[0];
+        return `"${t.title}",${t.status},${t.priority},"${assignees}","${t.creator?.name || ''}",${dueDate},${createdAt},${t.timeEstimate || 0},${t.totalTimeSpent || 0}`;
+    }).join('\n');
+
+    return header + rows;
+};
+
+const setTaskRecurrence = async ({ taskId, isRecurring, recurrenceInterval, userId, ip }) => {
+    const task = await Task.findById(taskId);
+    if (!task) {
+        const err = new Error('Task not found');
+        err.status = 404;
+        throw err;
+    }
+    const isCreator = task.creator.toString() === userId;
+    const isAssignee = task.assignees.some(id => id.toString() === userId);
+    if (!isCreator && !isAssignee && userRole !== 'super-admin' && userRole !== 'hr') {
+        const err = new Error('Not authorized to set recurrence on this task.');
+        err.status = 403;
+        throw err;
+    }
+    task.isRecurring = isRecurring;
+    if (isRecurring) {
+        task.recurrenceInterval = recurrenceInterval || 'weekly';
+        task.nextDueDate = task.dueDate || computeNextDueDate(task.recurrenceInterval, new Date());
+    } else {
+        task.recurrenceInterval = undefined;
+        task.nextDueDate = undefined;
+    }
+    await task.save();
+    await createAuditLog({
+        actor: userId, action: 'TASK_RECURRENCE_UPDATED',
+        target: { id: task._id, type: 'Task' },
+        details: { isRecurring, recurrenceInterval: task.recurrenceInterval },
+        ipAddress: ip,
+    });
+    return task;
+};
+
+const getKanbanBoard = async (userId, queryParams) => {
+    const filter = { assignees: userId };
+    const { priority, search } = queryParams;
+    if (priority) filter.priority = priority;
+    if (search) filter.title = { $regex: search, $options: 'i' };
+
+    const tasks = await Task.find(filter)
+        .select('title status priority dueDate assignees')
+        .populate('assignees', 'name profilePictureUrl')
+        .sort({ priority: -1, dueDate: 1 })
+        .lean();
+
+    const board = {
+        todo: tasks.filter(t => t.status === 'To Do'),
+        inProgress: tasks.filter(t => t.status === 'In Progress'),
+        done: tasks.filter(t => t.status === 'Done'),
+        blocked: tasks.filter(t => t.status === 'Blocked'),
+    };
+    return board;
+};
+
+const getTaskSummary = async (userId) => {
+    const [totalTasks, todoTasks, inProgressTasks, doneTasks, blockedTasks] = await Promise.all([
+        Task.countDocuments({ assignees: userId }),
+        Task.countDocuments({ assignees: userId, status: 'To Do' }),
+        Task.countDocuments({ assignees: userId, status: 'In Progress' }),
+        Task.countDocuments({ assignees: userId, status: 'Done' }),
+        Task.countDocuments({ assignees: userId, status: 'Blocked' }),
+    ]);
+    const overdueTasks = await Task.countDocuments({
+        assignees: userId,
+        dueDate: { $lt: new Date() },
+        status: { $ne: 'Done' },
+    });
+    return { totalTasks, todoTasks, inProgressTasks, doneTasks, blockedTasks, overdueTasks };
+};
+
+const getTasksCreatedByMe = async ({ userId, query }) => {
+    const baseQuery = { creator: userId };
+    const finalQuery = buildTaskQuery(baseQuery, query);
+    const sortBy = query.sortBy || 'createdAt';
+    const order = query.order === 'asc' ? 1 : -1;
+    const sortOptions = { [sortBy]: order };
+    const page = parseInt(query.page, 10) || 1;
+    const limit = parseInt(query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+    const [tasks, totalTasks] = await Promise.all([
+        Task.find(finalQuery)
+            .populate('assignees', 'name profilePictureUrl')
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Task.countDocuments(finalQuery),
+    ]);
+    return { tasks, totalTasks, page, limit };
 };
 
 module.exports = {
@@ -446,14 +976,22 @@ module.exports = {
     getAllTasks,
     updateTask,
     deleteTask,
-    // Stubs for remaining controller functions – replace when needed
     addComment,
     addAttachment,
-    updateTaskStatus: (req) => notImplemented('updateTaskStatus'),
-    requestTaskReopen: (req) => notImplemented('requestTaskReopen'),
-    resolveTaskReopen: (req) => notImplemented('resolveTaskReopen'),
-    updateTaskDependencies: (req) => notImplemented('updateTaskDependencies'),
-    logTimeToTask: (req) => notImplemented('logTimeToTask'),
-    toggleTaskSubscription: (req) => notImplemented('toggleTaskSubscription'),
-    getTasksCreatedByMe: (req) => notImplemented('getTasksCreatedByMe'),
+    updateTaskStatus,
+    logTimeToTask,
+    updateTaskDependencies,
+    requestTaskReopen,
+    resolveTaskReopen,
+    toggleTaskSubscription,
+    getTasksCreatedByMe,
+    getTaskSummary,
+    getKanbanBoard,
+    setTaskRecurrence,
+    exportTasksCSV,
+    getTaskActivityFeed,
+    getTaskDashboard,
+    bulkUpdateStatus,
+    bulkAssign,
+    bulkDelete,
 };

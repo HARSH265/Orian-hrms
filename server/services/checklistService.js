@@ -4,11 +4,10 @@ const Task = require('../model/task.model');
 const User = require('../model/user');
 const ChecklistInstance = require('../model/checklistInstance.model');
 const { createAuditLog } = require('./auditLogService');
+const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
 
 const applyChecklist = async ({ templateId, targetUserId, creator, startDate, req }) => {
-    // This is the exact same logic from your applyChecklistTemplate controller,
-    // now encapsulated in a reusable service function.
     const session = await mongoose.startSession();
     try {
         let createdTasksCount = 0;
@@ -21,20 +20,19 @@ const applyChecklist = async ({ templateId, targetUserId, creator, startDate, re
             if (!template || !targetUser) { throw new Error('Template or target user not found.'); }
             templateName = template.name;
 
-             const checklistInstance = new ChecklistInstance({
+            const checklistInstance = new ChecklistInstance({
                 template: templateId,
                 targetUser: targetUserId,
                 startDate,
                 createdBy: creator.id,
-                generatedTasks: [] // Will be populated after tasks are created
+                generatedTasks: [],
             });
             const taskCreationData = [];
             const sortedTaskTemplates = [...template.tasks].sort((a, b) => a.dueDays - b.dueDays);
-            
-            for (const taskTemplate of sortedTaskTemplates) {
-                let assigneeIds = []; // Changed to an array to support multiple assignees from a role
 
-                // --- NEW: Advanced Assignee Logic ---
+            for (const taskTemplate of sortedTaskTemplates) {
+                let assigneeIds = [];
+
                 switch (taskTemplate.defaultAssignee.assigneeType) {
                     case 'TargetUser':
                         assigneeIds.push(targetUser._id);
@@ -44,75 +42,112 @@ const applyChecklist = async ({ templateId, targetUserId, creator, startDate, re
                             assigneeIds.push(targetUser.manager._id);
                         }
                         break;
-                    case 'HRTrigger': // The HR user who initiated the process
+                    case 'HRTrigger':
+                        assigneeIds.push(creator.id);
+                        break;
+                    case 'Creator':
                         assigneeIds.push(creator.id);
                         break;
                     case 'Role':
                         if (taskTemplate.defaultAssignee.roleId) {
-                            // Find all active users who have this specific role
-                            const usersInRole = await User.find({ 
+                            const usersInRole = await User.find({
                                 roles: taskTemplate.defaultAssignee.roleId,
-                                isActive: true 
+                                isActive: true,
                             }).select('_id').session(session);
                             assigneeIds.push(...usersInRole.map(u => u._id));
                         }
                         break;
                     default:
-                        // Log a warning if the assignee type is unknown
                         logger.warn(`Unknown assigneeType: ${taskTemplate.defaultAssignee.assigneeType} for task template "${taskTemplate.title}"`);
                 }
 
-                // If no valid assignees were found for this rule, skip creating the task
                 if (assigneeIds.length === 0) {
                     logger.info(`Skipping task "${taskTemplate.title}" for template "${template.name}" due to no assignees found.`);
                     continue;
                 }
-                
+
                 const dueDate = new Date(startDate);
                 dueDate.setDate(dueDate.getDate() + taskTemplate.dueDays);
 
-                // Prepare the data for the new Task document
                 taskCreationData.push({
                     title: taskTemplate.title,
                     description: taskTemplate.description,
                     assignees: assigneeIds,
                     creator: creator.id,
                     dueDate,
-                    checklistInstance: checklistInstance._id // Link back to the instance
+                    checklistInstance: checklistInstance._id,
                 });
             }
 
             if (taskCreationData.length > 0) {
                 const createdTasks = await Task.insertMany(taskCreationData, { session });
                 createdTasksCount = createdTasks.length;
-                
-                // ... dependency linking logic ...
-                
                 checklistInstance.generatedTasks = createdTasks.map(t => t._id);
             }
-            
+
             await checklistInstance.save({ session });
+
             await createAuditLog({
-                actor: creator.id, 
+                actor: creator.id,
                 action: 'CHECKLIST_APPLIED',
                 target: { id: checklistInstance._id, type: 'ChecklistInstance' },
-                details: { 
-                    templateName: template.name, 
+                details: {
+                    templateName: template.name,
                     targetUser: targetUser.name,
-                    tasksGenerated: createdTasks.length
+                    tasksGenerated: createdTasks.length,
                 },
-                ipAddress: req.ip
+                ipAddress: req.ip,
             });
         });
-        
+
+        await createNotification({
+            recipient: targetUserId,
+            message: `Checklist "${templateName}" has been applied to you with ${createdTasksCount} task(s).`,
+            link: '/checklists', type: 'Task',
+        }, req);
+
         return { success: true, message: `${createdTasksCount} tasks generated from template "${templateName}".` };
     } catch (error) {
-        throw error; // Let the controller handle the error
+        throw error;
     } finally {
         session.endSession();
     }
 };
 
-module.exports = { applyChecklist };
+const completeInstance = async (instanceId, userId, req) => {
+    const instance = await ChecklistInstance.findById(instanceId);
+    if (!instance) throw new Error('Checklist instance not found.');
+    if (instance.status === 'Completed') throw new Error('Checklist is already completed.');
 
+    instance.status = 'Completed';
+    instance.completionDate = new Date();
+    await instance.save();
 
+    await createAuditLog({
+        actor: userId, action: 'CHECKLIST_COMPLETED',
+        target: { id: instance._id, type: 'ChecklistInstance' },
+        details: { template: instance.template, targetUser: instance.targetUser },
+        ipAddress: req?.ip,
+    });
+
+    return instance.populate('template', 'name').populate('targetUser', 'name');
+};
+
+const checkAndAutoComplete = async (taskId) => {
+    const task = await Task.findById(taskId).select('checklistInstance status');
+    if (!task || !task.checklistInstance) return;
+
+    const instance = await ChecklistInstance.findById(task.checklistInstance);
+    if (!instance || instance.status === 'Completed') return;
+
+    const allTasks = await Task.find({ checklistInstance: instance._id }).select('status');
+    const allDone = allTasks.every(t => t.status === 'Done');
+
+    if (allDone) {
+        instance.status = 'Completed';
+        instance.completionDate = new Date();
+        await instance.save();
+    }
+};
+
+module.exports = { applyChecklist, completeInstance, checkAndAutoComplete };

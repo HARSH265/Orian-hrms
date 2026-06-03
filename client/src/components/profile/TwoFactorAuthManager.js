@@ -19,18 +19,19 @@ const TwoFactorAuthManager = () => {
         dispatch(generate2FASecret());
     };
 
-    const handleVerify = () => {
-        dispatch(verify2FACode(verificationCode))
-            .unwrap()
-            .then(() => {
-                message.success('Two-Factor Authentication enabled!');
-                setIsSetupModalVisible(false);
-                setVerificationCode(''); // Clear input on success
-            })
-            .catch((err) => {
-                message.error(err || 'Verification failed. Please check the code and try again.');
-            });
-    };
+  const handleVerify = () => {
+    dispatch(verify2FACode(verificationCode.trim()))
+      .unwrap()
+      .then(() => {
+        message.success('Two-Factor Authentication enabled!');
+        setIsSetupModalVisible(false);
+        setVerificationCode('');
+        dispatch(clear2FASetup());
+      })
+      .catch((err) => {
+        message.error(err || 'Verification failed. Please check the code and try again.');
+      });
+  };
 
     const handleDisable = () => {
         dispatch(disable2FA())
@@ -39,10 +40,11 @@ const TwoFactorAuthManager = () => {
             .catch((err) => message.error(err));
     };
 
-    const handleCancelSetup = () => {
-        setIsSetupModalVisible(false);
-        setVerificationCode(''); // Clear input on cancel
-        dispatch(clear2FASetup());
+  const handleCancelSetup = () => {
+      setIsSetupModalVisible(false);
+      setVerificationCode('');
+      dispatch(clear2FASetup());
+      // Optionally, call a new endpoint to clear temp secret server-side
     };
 
     // --- THIS IS THE KEY FIX ---

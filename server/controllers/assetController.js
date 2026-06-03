@@ -1,81 +1,80 @@
-const { getAllAssets, getAssetById, createAsset, updateAsset, deleteAsset, getMyAssets } = require('../services/assetService');
+const assetService = require('../services/assetService');
+const asyncHandler = require('../utils/asyncHandler');
 
-// @desc    Get all assets
-// @route   GET /api/assets
-// @access  Private/Admin
-exports.getAllAssets = async (req, res, next) => {
+exports.getAllAssets = asyncHandler(async (req, res) => {
+    const result = await assetService.getAllAssets(req.query);
+    res.status(200).json({ success: true, count: result.assets.length, ...result });
+});
+
+exports.getAssetById = asyncHandler(async (req, res) => {
+    const asset = await assetService.getAssetById(req.params.id);
+    if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
+    res.status(200).json({ success: true, data: asset });
+});
+
+exports.createAsset = asyncHandler(async (req, res) => {
+    const asset = await assetService.createAsset(req.body, req.user.id, req.ip);
+    res.status(201).json({ success: true, data: asset });
+});
+
+exports.updateAsset = asyncHandler(async (req, res) => {
+    const asset = await assetService.updateAsset(req.params.id, req.body, req.user.id, req.ip);
+    res.status(200).json({ success: true, data: asset });
+});
+
+exports.deleteAsset = asyncHandler(async (req, res) => {
+    const result = await assetService.deleteAsset(req.params.id, req.user.id);
+    res.status(200).json({ success: true, ...result });
+});
+
+exports.getMyAssets = asyncHandler(async (req, res) => {
+    const myAssets = await assetService.getMyAssets(req.user.id);
+    res.status(200).json({ success: true, count: myAssets.length, data: myAssets });
+});
+
+exports.getDepreciation = asyncHandler(async (req, res) => {
+    const depreciation = await assetService.getAssetDepreciation(req.params.id);
+    res.status(200).json({ success: true, data: depreciation });
+});
+
+exports.getAssetHistory = asyncHandler(async (req, res) => {
+    const logs = await assetService.getAssetHistory(req.params.id);
+    res.status(200).json({ success: true, data: logs });
+});
+
+exports.exportCSV = asyncHandler(async (req, res) => {
+    const csv = await assetService.exportAssetsCSV(req.query);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=assets.csv');
+    res.status(200).send(csv);
+});
+
+exports.getLicenseSummary = asyncHandler(async (req, res) => {
+    const summary = await assetService.getLicenseSummary();
+    res.status(200).json({ success: true, data: summary });
+});
+
+exports.getSummary = asyncHandler(async (req, res) => {
+    const summary = await assetService.getAssetSummary();
+    res.status(200).json({ success: true, data: summary });
+});
+
+exports.addAttachment = asyncHandler(async (req, res, next) => {
     try {
-        const assets = await getAllAssets();
-        res.status(200).json({ success: true, count: assets.length, data: assets });
+        const doc = await assetService.addAssetAttachment(req.params.id, req.body, req.user.id);
+        res.status(201).json({ success: true, data: doc });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
 
-// @desc    Create a new asset
-// @route   POST /api/assets
-// @access  Private/Admin
-exports.createAsset = async (req, res, next) => {
+exports.removeAttachment = asyncHandler(async (req, res, next) => {
     try {
-        const asset = await createAsset(req.body);
-        res.status(201).json({ success: true, data: asset });
+        const result = await assetService.removeAssetAttachment(req.params.id, req.params.documentId, req.user.id);
+        res.json({ success: true, ...result });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
-
-// @desc    Update an asset's details
-// @route   PUT /api/assets/:id
-// @access  Private/Admin
-exports.updateAsset = async (req, res, next) => {
-    try {
-        let asset = await getAssetById(req.params.id);
-        if (!asset) {
-            return res.status(404).json({ success: false, message: 'Asset not found' });
-        }
-
-        if (req.body.assignedTo) {
-            req.body.status = 'Assigned';
-        }
-        if (req.body.assignedTo === null) {
-            req.body.status = 'Available';
-        }
-
-        asset = await updateAsset(req.params.id, req.body);
-
-        res.status(200).json({ success: true, data: asset });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// @desc    Delete an asset
-// @route   DELETE /api/assets/:id
-// @access  Private/Admin
-exports.deleteAsset = async (req, res, next) => {
-    try {
-        const asset = await getAssetById(req.params.id);
-        if (!asset) {
-            return res.status(404).json({ success: false, message: 'Asset not found' });
-        }
-        if (asset.status === 'Assigned') {
-            return res.status(400).json({ success: false, message: 'Cannot delete an asset that is currently assigned to a user. Please unassign it first.' });
-        }
-        await deleteAsset(asset);
-        res.status(200).json({ success: true, message: 'Asset deleted successfully' });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// @desc    Get all assets assigned to the logged-in user
-// @route   GET /api/assets/my-assets
-// @access  Private (Employee)
-exports.getMyAssets = async (req, res, next) => {
-    try {
-        const myAssets = await getMyAssets(req.user.id);
-        res.status(200).json({ success: true, count: myAssets.length, data: myAssets });
-    } catch (error) {
-        next(error);
-    }
-};
+});

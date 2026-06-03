@@ -3,6 +3,7 @@
 const express = require('express');
 const {
     getAllChecklistTemplates,
+    getChecklistTemplateById,
     createChecklistTemplate,
     applyChecklistTemplate,
     updateChecklistTemplate,
@@ -26,6 +27,7 @@ router.route('/apply')
     .post(checkPermissions(PERMISSIONS.APPLY_CHECKLISTS), applyChecklistTemplate);
 
 router.route('/:id')
+    .get(getChecklistTemplateById)
     .put(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), updateChecklistTemplate)
     .delete(checkPermissions(PERMISSIONS.MANAGE_CHECKLIST_TEMPLATES), deleteChecklistTemplate);
 

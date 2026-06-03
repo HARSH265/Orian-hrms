@@ -16,12 +16,14 @@ const LeavePolicySchema = new mongoose.Schema({
         required: [true, 'Please specify the number of days per year for this policy'],
         min: 0,
     },
-    requiresAttachment: { // 👈 NEW: For sick leave, etc.
+    requiresAttachment: {
         type: Boolean,
         default: false,
     },
-    // We can add more advanced fields later, like 'accrualType' (monthly/yearly)
-    // or 'canCarryForward' (boolean)
+    maxConsecutiveDays: {
+        type: Number,
+        default: null,
+    },
     isArchived: {
         type: Boolean,
         default: false,

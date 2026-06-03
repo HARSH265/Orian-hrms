@@ -27,7 +27,7 @@ exports.protect = async (req, res, next) => {
         }
 
         req.user = await User.findById(decoded.id)
-            .select('systemRole roles')
+            .select('systemRole roles name email profilePictureUrl')
             .populate({
                 path: 'roles',
                 select: 'name permissions'
@@ -54,6 +54,8 @@ exports.protect = async (req, res, next) => {
         return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
     }
 };
+
+exports.clearPermissionCache = () => permissionCache.flushAll();
 
 exports.checkPermissions = (...requiredPermissions) => {
     return (req, res, next) => {

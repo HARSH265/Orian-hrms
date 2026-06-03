@@ -2,54 +2,54 @@ import { createSlice } from '@reduxjs/toolkit';
 import { fetchMyLeaveHistory, applyForLeave, withdrawLeave } from './leaveThunks';
 
 const initialState = {
-  leaves: [], // This will hold the array of leave objects
-  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+  leaves: [],
+  status: 'idle',
   error: null,
 };
 
 const leaveSlice = createSlice({
   name: 'leave',
   initialState,
-  reducers: {}, // No direct reducers needed for now
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
-      // Cases for fetching history
       .addCase(fetchMyLeaveHistory.pending, (state) => {
         state.status = 'loading';
+        state.error = null;
       })
       .addCase(fetchMyLeaveHistory.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.leaves = action.payload; // Replace the list with the fetched data
+        state.leaves = action.payload;
       })
       .addCase(fetchMyLeaveHistory.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       })
-      // Cases for applying for leave
       .addCase(applyForLeave.pending, (state) => {
-        state.status = 'loading'; // We can show a loading state on the submit button
+        state.error = null;
       })
-      .addCase(applyForLeave.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        // Add the new leave request to the top of our list for immediate feedback
-        // Note: The thunk already re-fetches, so this is for optimistic UI, but let's rely on the fetch.
+      .addCase(applyForLeave.fulfilled, (state) => {
+        // Re-fetch handles list update; just clear error
+        state.error = null;
       })
       .addCase(applyForLeave.rejected, (state, action) => {
-        state.status = 'failed';
-        state.error = action.payload; // We can show this error message to the user
+        state.error = action.payload;
       })
       .addCase(withdrawLeave.pending, (state) => {
-        state.status = 'loading';
+        state.error = null;
       })
       .addCase(withdrawLeave.fulfilled, (state) => {
-        // The list is re-fetched, so we just reset the status.
-        state.status = 'succeeded';
+        state.error = null;
       })
       .addCase(withdrawLeave.rejected, (state, action) => {
-        state.status = 'failed';
         state.error = action.payload;
       });
   },
 });
 
+export const { clearError } = leaveSlice.actions;
 export default leaveSlice.reducer;

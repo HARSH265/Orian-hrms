@@ -2,8 +2,11 @@ const attendanceService = require('../services/attendanceService');
 const asyncHandler = require('../utils/asyncHandler');
 
 exports.clockIn = asyncHandler(async (req, res) => {
-    const record = await attendanceService.clockIn(req.user.id);
-    res.status(200).json({ success: true, message: 'Clocked in successfully.', data: record });
+    const result = await attendanceService.clockIn(req.user.id);
+    const message = result.alreadyClockedIn
+        ? 'Already clocked in today.'
+        : 'Clocked in successfully.';
+    res.status(200).json({ success: true, message, data: result.record, alreadyClockedIn: result.alreadyClockedIn });
 });
 
 exports.clockOut = asyncHandler(async (req, res) => {
@@ -24,4 +27,15 @@ exports.getTeamAttendance = asyncHandler(async (req, res) => {
     const { startDate, endDate } = req.query;
     const records = await attendanceService.getTeamAttendance(req.user.id, startDate, endDate);
     res.status(200).json({ success: true, data: records });
+});
+
+exports.getMySummary = asyncHandler(async (req, res) => {
+    const summary = await attendanceService.getAttendanceSummary(req.user.id);
+    res.status(200).json({ success: true, data: summary });
+});
+
+exports.updateAttendance = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const record = await attendanceService.updateAttendanceRecord(id, req.body, req.user.id);
+    res.status(200).json({ success: true, message: 'Attendance record updated.', data: record });
 });

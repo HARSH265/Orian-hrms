@@ -4,11 +4,11 @@ const LeaveBalance = require('../model/leaveBalance.model');
 const { createNotification } = require('./notificationService');
 const logger = require('../utils/logger');
 const { parsePagination, buildPagination } = require('../utils/pagination');
+const { getDescendantIds } = require('../utils/teamTree');
 
 const getTeamLeaveRequests = async (managerId, { page, limit } = {}) => {
     const { page: p, limit: l, skip } = parsePagination({ page, limit });
-    const teamMembers = await User.find({ manager: managerId }).select('_id').lean();
-    const teamMemberIds = teamMembers.map(member => member._id);
+    const teamMemberIds = await getDescendantIds(managerId);
     const query = { employee: { $in: teamMemberIds } };
     const [leaveRequests, total] = await Promise.all([
         Leave.find(query)

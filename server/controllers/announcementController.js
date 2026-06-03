@@ -1,79 +1,71 @@
-const { getPublishedAnnouncements, createAnnouncement, getAnnouncementById, updateAnnouncement, deleteAnnouncement, checkOwnership } = require('../services/announcementService');
+const asyncHandler = require('../utils/asyncHandler');
+const announcementService = require('../services/announcementService');
 
-// @desc    Get all published announcements
-// @route   GET /api/announcements
-// @access  Private (All logged-in users)
-exports.getPublishedAnnouncements = async (req, res, next) => {
+exports.getPublishedAnnouncements = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+    const result = await announcementService.getPublishedAnnouncements({ page, limit });
+    res.json({ success: true, ...result });
+});
+
+exports.getAllAnnouncements = asyncHandler(async (req, res) => {
+    const { page, limit, status } = req.query;
+    const result = await announcementService.getAllAnnouncements({ page, limit, status });
+    res.json({ success: true, ...result });
+});
+
+exports.createAnnouncement = asyncHandler(async (req, res) => {
+    const { title, content, status } = req.body;
+    const announcement = await announcementService.createAnnouncement(
+        { title, content, status, author: req.user.id }, req.user.id, req.ip
+    );
+    res.status(201).json({ success: true, data: announcement });
+});
+
+exports.getAnnouncementById = asyncHandler(async (req, res, next) => {
     try {
-        const { page, limit } = req.query;
-        const result = await getPublishedAnnouncements({ page, limit });
-        res.status(200).json({ success: true, ...result });
+        const announcement = await announcementService.getAnnouncementById(req.params.id);
+        res.json({ success: true, data: announcement });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
 
-// @desc    Create a new announcement
-// @route   POST /api/announcements
-// @access  Private/Admin
-exports.createAnnouncement = async (req, res, next) => {
+exports.updateAnnouncement = asyncHandler(async (req, res, next) => {
     try {
-        const { title, content, status } = req.body;
-        const author = req.user.id;
-
-        const announcement = await createAnnouncement({ title, content, status, author });
-        res.status(201).json({ success: true, data: announcement });
-    } catch (error) {
-        next(error);
-    }
-};
-
-// @desc    Update an announcement
-// @route   PUT /api/announcements/:id
-// @access  Private/Admin
-exports.updateAnnouncement = async (req, res, next) => {
-    try {
-        const announcement = await getAnnouncementById(req.params.id);
-
-        if (!announcement) {
-            return res.status(404).json({ success: false, message: 'Announcement not found' });
-        }
-
-        const { isAuthor, isSuperAdmin } = checkOwnership(announcement, req.user);
-
+        const announcement = await announcementService.getAnnouncementById(req.params.id);
+        const { isAuthor, isSuperAdmin } = announcementService.checkOwnership(announcement, req.user);
         if (!isAuthor && !isSuperAdmin) {
-            return res.status(403).json({ success: false, message: 'You are not authorized to update this announcement.' });
+            return res.status(403).json({ success: false, message: 'Not authorized.' });
         }
-
-        const updatedAnnouncement = await updateAnnouncement(req.params.id, req.body);
-
-        res.status(200).json({ success: true, data: updatedAnnouncement });
+        const updated = await announcementService.updateAnnouncement(req.params.id, req.body, req.user.id, req.ip);
+        res.json({ success: true, data: updated });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
 
-// @desc    Delete an announcement
-// @route   DELETE /api/announcements/:id
-// @access  Private/Admin
-exports.deleteAnnouncement = async (req, res, next) => {
+exports.deleteAnnouncement = asyncHandler(async (req, res, next) => {
     try {
-        const announcement = await getAnnouncementById(req.params.id);
-
-        if (!announcement) {
-            return res.status(404).json({ success: false, message: 'Announcement not found' });
-        }
-
-        const { isAuthor, isSuperAdmin } = checkOwnership(announcement, req.user);
-
+        const announcement = await announcementService.getAnnouncementById(req.params.id);
+        const { isAuthor, isSuperAdmin } = announcementService.checkOwnership(announcement, req.user);
         if (!isAuthor && !isSuperAdmin) {
-            return res.status(403).json({ success: false, message: 'You are not authorized to delete this announcement.' });
+            return res.status(403).json({ success: false, message: 'Not authorized.' });
         }
-
-        await deleteAnnouncement(req.params.id);
-
-        res.status(200).json({ success: true, message: 'Announcement deleted' });
+        await announcementService.deleteAnnouncement(req.params.id, req.user.id, req.ip);
+        res.json({ success: true, message: 'Announcement deleted.' });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
+
+exports.exportAnnouncements = asyncHandler(async (req, res) => {
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    const csv = await announcementService.exportAnnouncementsCSV(filter);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="announcements-export.csv"');
+    res.send(csv);
+});

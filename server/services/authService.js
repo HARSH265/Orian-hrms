@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const User = require('../model/user');
 const RefreshToken = require('../model/refreshToken.model');
 const generateTokens = require('../utils/generateToken');
+const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { blacklistToken } = require('../utils/tokenBlacklist');
 const speakeasy = require('speakeasy');
@@ -18,30 +19,32 @@ const loginUser = async (email, password, req, res, twoFactorCode) => {
     // Find user with password
     const user = await User.findOne({ email }).select('+password');
     // Account lock check
-    if (user && user.lockUntil && user.lockUntil > Date.now()) {
-        return { status: 403, payload: { success: false, message: 'Invalid credentials' } };
+  if (user && user.lockUntil && user.lockUntil > Date.now()) {
+    logger.error('[AUTH SERVICE] Login FAILED: Account locked.');
+    return { status: 403, payload: { success: false, message: 'Account is temporarily locked. Please try again later.' } };
+  }
+  // Check if account is active
+  if (user && !user.isActive) {
+    logger.error('[AUTH SERVICE] Login FAILED: Account inactive.');
+    return { status: 403, payload: { success: false, message: 'Account is inactive. Please contact support.' } };
+  }
+  // User not found
+  if (!user) {
+    logger.error('[AUTH SERVICE] Login FAILED: Invalid credentials.');
+    return { status: 401, payload: { success: false, message: 'Invalid credentials' } };
+  }
+  // Verify password
+  const isMatch = await user.matchPassword(password);
+  if (!isMatch) {
+    // Increment failed attempts
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    if (user.failedLoginAttempts >= 5) {
+      user.lockUntil = Date.now() + 15 * 60 * 1000; // lock 15min
     }
-    // Check if account is active
-    if (user && !user.isActive) {
-        return { status: 403, payload: { success: false, message: 'Invalid credentials' } };
-    }
-    // User not found
-    if (!user) {
-        logger.error('[AUTH SERVICE] Login FAILED: Invalid credentials.');
-        return { status: 401, payload: { success: false, message: 'Invalid credentials' } };
-    }
-    // Verify password
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-        // Increment failed attempts
-        user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
-        if (user.failedLoginAttempts >= 5) {
-            user.lockUntil = Date.now() + 15 * 60 * 1000; // lock 15min
-        }
-        await user.save();
-        logger.error('[AUTH SERVICE] Login FAILED: Invalid credentials.');
-        return { status: 401, payload: { success: false, message: 'Invalid credentials' } };
-    }
+    await user.save();
+    logger.error('[AUTH SERVICE] Login FAILED: Invalid password for user id ' + user._id);
+    return { status: 401, payload: { success: false, message: 'Invalid credentials' } };
+  }
     // Reset attempts on success
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
@@ -70,34 +73,39 @@ const loginUser = async (email, password, req, res, twoFactorCode) => {
  * Refresh access token using stored refresh token cookie.
  */
 const refreshTokenUser = async (req, res) => {
-    const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) {
-        return { status: 401, payload: { success: false, message: 'Unauthorized: No refresh token' } };
-    }
-    let decoded;
-    try {
-        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-    } catch (err) {
-        return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid refresh token' } };
-    }
-    const tokenDoc = await RefreshToken.findOne({ user: decoded.id, revoked: false });
-    if (!tokenDoc) {
-        return { status: 401, payload: { success: false, message: 'Unauthorized: Refresh token not recognized' } };
-    }
-    const isValid = await tokenDoc.isValid(refreshToken);
-    if (!isValid) {
-        return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid refresh token' } };
-    }
-    const user = await User.findById(decoded.id);
-    if (!user) {
-        logger.error('[AUTH SERVICE] Refresh FAILED: User in refresh token not found.');
-        return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid user for refresh' } };
-    }
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    return { status: 401, payload: { success: false, message: 'Unauthorized: No refresh token' } };
+  }
+  let decoded;
+  try {
+    decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+  } catch (err) {
+    logger.error('[AUTH SERVICE] Refresh FAILED: Invalid refresh token signature.');
+    return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid refresh token' } };
+  }
+  const tokenDoc = await RefreshToken.findOne({ user: decoded.id, revoked: false });
+  if (!tokenDoc) {
+    logger.error('[AUTH SERVICE] Refresh FAILED: Refresh token not recognized for user id: ' + decoded.id);
+    return { status: 401, payload: { success: false, message: 'Unauthorized: Refresh token not recognized' } };
+  }
+  const isValid = await tokenDoc.isValid(refreshToken);
+  if (!isValid) {
+    logger.error('[AUTH SERVICE] Refresh FAILED: Invalid refresh token content for token doc id: ' + tokenDoc._id);
+    return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid refresh token' } };
+  }
+  const user = await User.findById(decoded.id);
+  if (!user) {
+    logger.error('[AUTH SERVICE] Refresh FAILED: User in refresh token not found.');
+    return { status: 401, payload: { success: false, message: 'Unauthorized: Invalid user for refresh' } };
+  }
     // Rotate tokens
-    const { accessToken } = await generateTokens(res, user._id, user.systemRole);
-    tokenDoc.revoked = true;
-    await tokenDoc.save();
-    return { status: 200, payload: { success: true, accessToken } };
+  // Invalidate the old refresh token
+  tokenDoc.revoked = true;
+  await tokenDoc.save();
+  // Generate new tokens
+  const { accessToken } = await generateTokens(res, user._id, user.systemRole);
+  return { status: 200, payload: { success: true, accessToken } };
 };
 
 /**
@@ -212,14 +220,12 @@ const forgotPassword = async (email) => {
         return { message: 'If an account exists, a reset link has been sent.' };
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+  const resetToken = crypto.randomBytes(32).toString('hex');
 
-    user.passwordResetToken = resetTokenHash;
-    user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
-    await user.save();
-
-    logger.info(`[AUTH] Password reset token for ${email}: ${resetToken}`);
+    user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+  await user.save();
+  logger.info(`[AUTH] Password reset token issued for ${email}`);
 
     return { message: 'If an account exists, a reset link has been sent.' };
 };

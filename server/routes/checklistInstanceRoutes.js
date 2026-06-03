@@ -1,14 +1,16 @@
-// In: server/routes/checklistInstanceRoutes.js
-
 const express = require('express');
-const { getActiveChecklistInstances } = require('../controllers/checklistInstanceController');
+const { getActiveChecklistInstances, getInstanceById, completeInstance, autoComplete } = require('../controllers/checklistInstanceController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
-router.use(protect, checkPermissions(PERMISSIONS.VIEW_USER_CHECKLISTS));
+router.use(protect);
 
-router.route('/active').get(getActiveChecklistInstances);
+router.get('/active', checkPermissions(PERMISSIONS.VIEW_USER_CHECKLISTS), getActiveChecklistInstances);
+router.get('/:id', getInstanceById);
+router.put('/:id/complete', writeLimiter, checkPermissions(PERMISSIONS.APPLY_CHECKLISTS), completeInstance);
+router.post('/auto-complete', writeLimiter, autoComplete);
 
 module.exports = router;

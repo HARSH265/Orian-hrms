@@ -46,6 +46,11 @@ const TaskSchema = new mongoose.Schema({
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     dueDate: { type: Date },
 
+    isRecurring: { type: Boolean, default: false },
+    recurrenceInterval: { type: String, enum: ['daily', 'weekly', 'monthly', 'yearly'], default: 'weekly' },
+    nextDueDate: { type: Date },
+    originalTask: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
+
      timeEstimate: { 
         type: Number,
         default: 0,

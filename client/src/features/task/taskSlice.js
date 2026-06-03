@@ -20,6 +20,10 @@ import {
     toggleTaskSubscription
 } from './taskThunks';
 
+const updateListAfterMutation = (list, updatedTask) => {
+    const idx = list.findIndex(t => t._id === updatedTask._id);
+    if (idx !== -1) list[idx] = { ...list[idx], ...updatedTask };
+};
 
 const listInitialState = {
     data: [],
@@ -58,7 +62,6 @@ const taskSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // My Tasks Cases
       .addCase(fetchMyTasks.pending, (state) => { state.myTasks.status = 'loading'; })
       .addCase(fetchMyTasks.fulfilled, (state, action) => {
         state.myTasks.status = 'succeeded';
@@ -70,7 +73,6 @@ const taskSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Team Tasks Cases
       .addCase(fetchTeamTasks.pending, (state) => { state.teamTasks.status = 'loading'; })
       .addCase(fetchTeamTasks.fulfilled, (state, action) => {
         state.teamTasks.status = 'succeeded';
@@ -82,7 +84,6 @@ const taskSlice = createSlice({
         state.error = action.payload;
       })
       
-      // All Tasks Cases
       .addCase(fetchAllTasks.pending, (state) => { state.allTasks.status = 'loading'; })
       .addCase(fetchAllTasks.fulfilled, (state, action) => {
         state.allTasks.status = 'succeeded';
@@ -94,7 +95,6 @@ const taskSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Created By Me Cases
       .addCase(fetchTasksCreatedByMe.pending, (state) => { state.createdTasks.status = 'loading'; })
       .addCase(fetchTasksCreatedByMe.fulfilled, (state, action) => {
         state.createdTasks.status = 'succeeded';
@@ -106,7 +106,6 @@ const taskSlice = createSlice({
         state.error = action.payload;
       })
 
-      // Selected Task (Modal) Cases
       .addCase(fetchTaskById.pending, (state) => { state.selectedTaskStatus = 'loading'; })
       .addCase(fetchTaskById.fulfilled, (state, action) => {
         state.selectedTaskStatus = 'succeeded';
@@ -117,61 +116,98 @@ const taskSlice = createSlice({
         state.error = action.payload;
       })
       
-      // Mutation cases that affect the selectedTaskDetails state
+      .addCase(createTask.fulfilled, (state, action) => {
+        state.myTasks.data.unshift(action.payload);
+      })
+
       .addCase(createSubTask.fulfilled, (state, action) => {
         if (state.selectedTaskDetails) { state.selectedTaskDetails.subTasks.push(action.payload); }
       })
-      .addCase(addCommentToTask.fulfilled, (state, action) => {
-        if (state.selectedTaskDetails) { state.selectedTaskDetails.comments = action.payload.comments; }
+
+      .addCase(updateTask.fulfilled, (state, action) => {
+        const updated = action.payload;
+        if (state.selectedTaskDetails && state.selectedTaskDetails._id === updated._id) {
+            state.selectedTaskDetails = updated;
+        }
+        updateListAfterMutation(state.myTasks.data, updated);
+        updateListAfterMutation(state.teamTasks.data, updated);
+        updateListAfterMutation(state.allTasks.data, updated);
+        updateListAfterMutation(state.createdTasks.data, updated);
       })
-      .addCase(addAttachmentToTask.fulfilled, (state, action) => {
-        if (state.selectedTaskDetails) { state.selectedTaskDetails.attachments = action.payload.attachments; }
-      })
+
       .addCase(updateTaskStatus.fulfilled, (state, action) => {
           const updatedTask = action.payload;
           if (state.selectedTaskDetails && state.selectedTaskDetails._id === updatedTask._id) {
-              state.selectedTaskDetails.status = updatedTask.status;
+              state.selectedTaskDetails = updatedTask;
           }
+          updateListAfterMutation(state.myTasks.data, updatedTask);
+          updateListAfterMutation(state.teamTasks.data, updatedTask);
+          updateListAfterMutation(state.allTasks.data, updatedTask);
+          updateListAfterMutation(state.createdTasks.data, updatedTask);
+      })
+
+      .addCase(deleteTask.fulfilled, (state, action) => {
+        const id = action.payload;
+        state.myTasks.data = state.myTasks.data.filter(t => t._id !== id);
+        state.teamTasks.data = state.teamTasks.data.filter(t => t._id !== id);
+        state.allTasks.data = state.allTasks.data.filter(t => t._id !== id);
+        state.createdTasks.data = state.createdTasks.data.filter(t => t._id !== id);
+        if (state.selectedTaskDetails && state.selectedTaskDetails._id === id) {
+            state.selectedTaskDetails = null;
+            state.isDetailsModalOpen = false;
+        }
+      })
+
+      .addCase(addCommentToTask.pending, (state) => { state.selectedTaskStatus = 'loading'; })
+      .addCase(addCommentToTask.fulfilled, (state, action) => {
+        state.selectedTaskStatus = 'succeeded';
+        if (state.selectedTaskDetails) { state.selectedTaskDetails.comments = action.payload.comments; }
+      })
+      .addCase(addCommentToTask.rejected, (state, action) => {
+        state.selectedTaskStatus = 'failed';
+        state.error = action.payload;
+      })
+
+      .addCase(addAttachmentToTask.pending, (state) => { state.selectedTaskStatus = 'loading'; })
+      .addCase(addAttachmentToTask.fulfilled, (state, action) => {
+        state.selectedTaskStatus = 'succeeded';
+        if (state.selectedTaskDetails) { state.selectedTaskDetails.attachments = action.payload.attachments; }
+      })
+      .addCase(addAttachmentToTask.rejected, (state, action) => {
+        state.selectedTaskStatus = 'failed';
+        state.error = action.payload;
       })
 
       .addCase(logTimeToTask.fulfilled, (state, action) => {
         state.selectedTaskStatus = 'succeeded';
-        // The API returns the full updated task, so we just replace our detailed view
         state.selectedTaskDetails = action.payload;
       })
-      .addCase(logTimeToTask.pending, (state) => {
-        state.selectedTaskStatus = 'loading';
-      })
+      .addCase(logTimeToTask.pending, (state) => { state.selectedTaskStatus = 'loading'; })
       .addCase(logTimeToTask.rejected, (state, action) => {
         state.selectedTaskStatus = 'failed';
         state.error = action.payload;
       })
       
-      // --- NEW: Pending/Rejected states for the re-open workflow ---
-      .addCase(requestTaskReopen.pending, (state) => {
-        // We don't change the main status, just show feedback where it's needed
-      })
-      .addCase(requestTaskReopen.rejected, (state, action) => {
-        state.error = action.payload; // Set a general error
-      })
-      .addCase(resolveTaskReopen.pending, (state) => {
-        state.selectedTaskStatus = 'loading'; // Show feedback in the modal
-      })
+      .addCase(requestTaskReopen.fulfilled, (state) => { state.selectedTaskStatus = 'succeeded'; })
+      .addCase(requestTaskReopen.rejected, (state, action) => { state.error = action.payload; })
+
+      .addCase(resolveTaskReopen.pending, (state) => { state.selectedTaskStatus = 'loading'; })
+      .addCase(resolveTaskReopen.fulfilled, (state) => { state.selectedTaskStatus = 'succeeded'; })
       .addCase(resolveTaskReopen.rejected, (state, action) => {
         state.selectedTaskStatus = 'failed';
         state.error = action.payload;
       })
-       .addCase(updateTaskDependencies.fulfilled, (state, action) => {
+
+      .addCase(updateTaskDependencies.fulfilled, (state, action) => {
         state.selectedTaskStatus = 'succeeded';
         state.selectedTaskDetails = action.payload;
       })
-      .addCase(updateTaskDependencies.pending, (state) => {
-        state.selectedTaskStatus = 'loading';
-      })
+      .addCase(updateTaskDependencies.pending, (state) => { state.selectedTaskStatus = 'loading'; })
       .addCase(updateTaskDependencies.rejected, (state, action) => {
         state.selectedTaskStatus = 'failed';
         state.error = action.payload;
       })
+
       .addCase(toggleTaskSubscription.fulfilled, (state, action) => {
         if (state.selectedTaskDetails && state.selectedTaskDetails._id === action.payload.task._id) {
             state.selectedTaskDetails.subscribers = action.payload.task.subscribers;

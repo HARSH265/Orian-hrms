@@ -14,28 +14,25 @@ const { Title } = Typography;
 const ExpenseApprovalPage = () => {
     const dispatch = useDispatch();
     
-    // --- THIS IS THE MISSING LINE ---
     const { user: loggedInUser } = useSelector((state) => state.auth);
-    // --- END OF FIX ---
 
-    // Now, we can performantly select our data
-    const { allExpenses, teamExpenses, status } = useSelector((state) => state.expense);
-
-    // And use the loggedInUser to determine which data to display
-    const expenses = (loggedInUser.role === 'hr' || loggedInUser.role === 'super-admin') ? allExpenses : teamExpenses;
+    const { allExpenses, teamExpenses, teamStatus, allStatus, actionStatus } = useSelector((state) => state.expense);
+    const isAdmin = loggedInUser?.systemRole === 'hr' || loggedInUser?.systemRole === 'super-admin';
+    const expenses = isAdmin ? allExpenses : teamExpenses;
+    const loadingStatus = isAdmin ? allStatus : teamStatus;
 
     useEffect(() => {
-        if (!loggedInUser) return; // Don't fetch data until we know who the user is
+        if (!loggedInUser) return;
 
-        if (loggedInUser.role === 'hr' || loggedInUser.role === 'super-admin') {
+        if (isAdmin) {
             dispatch(fetchAllSystemExpenses());
-        } else if (loggedInUser.role === 'manager') {
+        } else {
             dispatch(fetchTeamExpenses());
         }
-    }, [dispatch, loggedInUser]);
+    }, [dispatch, loggedInUser, isAdmin]);
 
     const handleUpdateStatus = (expenseId, newStatus) => {
-        const action = (loggedInUser.role === 'hr' || loggedInUser.role === 'super-admin')
+        const action = isAdmin
             ? adminUpdateExpenseStatus({ expenseId, status: newStatus })
             : updateTeamExpenseStatus({ expenseId, status: newStatus });
         
@@ -47,11 +44,21 @@ const ExpenseApprovalPage = () => {
     const columns = [
         { title: 'Employee', dataIndex: ['employee', 'name'], key: 'employeeName' },
         { title: 'Date', dataIndex: 'date', render: (date) => new Date(date).toLocaleDateString() },
-        { title: 'Amount', dataIndex: 'amount', render: (amount) => `$${amount.toFixed(2)}` },
+        {
+            title: 'Amount', key: 'amount',
+            render: (_, record) => {
+                const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: record.currency || 'USD' });
+                return fmt.format(record.amount);
+            }
+        },
         { title: 'Description', dataIndex: 'description' },
         { 
             title: 'Status', dataIndex: 'status', 
             render: status => <StatusTag status={status} />
+        },
+        {
+            title: 'Receipt', dataIndex: 'receiptUrl',
+            render: (url) => url ? <a href={url} target="_blank" rel="noopener noreferrer">View</a> : null
         },
         {
             title: 'Action', key: 'action',
@@ -72,7 +79,7 @@ const ExpenseApprovalPage = () => {
 
     return (
         <Card title={<Title level={3}>Expense Claim Approvals</Title>}>
-            <Table columns={columns} dataSource={expenses} rowKey="_id" loading={status === 'loading'} scroll={{ x: true }} />
+            <Table columns={columns} dataSource={expenses} rowKey="_id" loading={loadingStatus === 'loading' || actionStatus === 'loading'} scroll={{ x: true }} />
         </Card>
     );
 };

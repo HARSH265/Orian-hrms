@@ -1,24 +1,24 @@
 const express = require('express');
-const { 
-    createDepartment, 
-    getAllDepartments, 
-    updateDepartment, 
-    deleteDepartment 
+const {
+    createDepartment, getAllDepartments, getDepartmentById,
+    updateDepartment, deleteDepartment, exportDepartments,
 } = require('../controllers/departmentController');
-
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();
 
-// The GET route is accessible to any logged-in user
-router.route('/')
-    .get(protect, getAllDepartments)
-    .post(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), createDepartment);
+router.use(protect);
 
-// The PUT and DELETE routes are only for admins
+router.get('/export', checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), exportDepartments);
+
+router.route('/')
+    .get(getAllDepartments)
+    .post(checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), createDepartment);
+
 router.route('/:id')
-    .put(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), updateDepartment)
-    .delete(protect, checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), deleteDepartment);
+    .get(getDepartmentById)
+    .put(checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), updateDepartment)
+    .delete(checkPermissions(PERMISSIONS.MANAGE_DEPARTMENTS), deleteDepartment);
 
 module.exports = router;

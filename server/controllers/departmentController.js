@@ -1,45 +1,55 @@
-const { createDepartment, getAllDepartments, updateDepartment, deleteDepartment } = require('../services/departmentService');
+const asyncHandler = require('../utils/asyncHandler');
+const departmentService = require('../services/departmentService');
 
-exports.createDepartment = async (req, res, next) => {
+exports.createDepartment = asyncHandler(async (req, res, next) => {
     try {
-        const { name, description } = req.body;
-        const department = await createDepartment(name, description);
+        const department = await departmentService.createDepartment(req.body, req.user.id, req.ip);
         res.status(201).json({ success: true, data: department });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
 
-exports.getAllDepartments = async (req, res, next) => {
-    try {
-        const { page, limit } = req.query;
-        const result = await getAllDepartments({ page, limit });
-        res.status(200).json({ success: true, ...result });
-    } catch (error) {
-        next(error);
-    }
-};
+exports.getAllDepartments = asyncHandler(async (req, res) => {
+    const { page, limit } = req.query;
+    const result = await departmentService.getAllDepartments({ page, limit });
+    res.json({ success: true, ...result });
+});
 
-exports.updateDepartment = async (req, res, next) => {
+exports.getDepartmentById = asyncHandler(async (req, res, next) => {
     try {
-        const department = await updateDepartment(req.params.id, req.body);
-        if (!department) {
-            return res.status(404).json({ success: false, message: 'Department not found' });
-        }
-        res.status(200).json({ success: true, data: department });
+        const department = await departmentService.getDepartmentById(req.params.id);
+        res.json({ success: true, data: department });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
 
-exports.deleteDepartment = async (req, res, next) => {
+exports.updateDepartment = asyncHandler(async (req, res, next) => {
     try {
-        const department = await deleteDepartment(req.params.id);
-        if (!department) {
-            return res.status(404).json({ success: false, message: 'Department not found' });
-        }
-        res.status(200).json({ success: true, message: 'Department deleted' });
+        const department = await departmentService.updateDepartment(req.params.id, req.body, req.user.id, req.ip);
+        res.json({ success: true, data: department });
     } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
         next(error);
     }
-};
+});
+
+exports.deleteDepartment = asyncHandler(async (req, res, next) => {
+    try {
+        await departmentService.deleteDepartment(req.params.id, req.user.id, req.ip);
+        res.json({ success: true, message: 'Department deleted.' });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+        next(error);
+    }
+});
+
+exports.exportDepartments = asyncHandler(async (req, res) => {
+    const csv = await departmentService.exportDepartmentsCSV();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="departments-export.csv"');
+    res.send(csv);
+});

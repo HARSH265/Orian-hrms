@@ -1,53 +1,40 @@
-// In: server/routes/userRoutes.js
-
 const express = require('express');
 const {
-    getProfile, getAllUsers, createUser, updateProfile, updateUserById, deactivateUser,
-    getManagerUsers, completeWelcomeWizard, addSkillToProfile, removeSkillFromProfile, 
-    endorseSkill, getUserChecklistInstances, getUserById
+    getProfile, getAllUsers, createUser, updateProfile, updateUserById, deactivateUser, reactivateUser,
+    getManagerUsers, completeWelcomeWizard, addSkillToProfile, removeSkillFromProfile,
+    endorseSkill, getUserChecklistInstances, getUserById, exportUsers,
 } = require('../controllers/userController');
 const { protect, checkPermissions } = require('../middleware/authMiddleware');
 const { PERMISSIONS } = require('../config/permissions');
+const { writeLimiter } = require('../middleware/rateLimitMiddleware');
 
 const router = express.Router();
 
-// Apply login protection to all routes in this file
 router.use(protect);
 
-// =======================================================================
-// --- ORDER OF ROUTES IS CRITICAL ---
+// ─── Static self-service routes ─────────────────────────────
+router.get('/profile', getProfile);
+router.put('/profile', writeLimiter, updateProfile);
+router.post('/profile/skills', writeLimiter, addSkillToProfile);
+router.delete('/profile/skills/:skillId', writeLimiter, removeSkillFromProfile);
 
-// 1. Most Specific, Static Routes First
-// These do not have any parameters in their path.
-router.route('/profile')
-    .get(getProfile)
-    .put(updateProfile);
+router.put('/complete-wizard', writeLimiter, completeWelcomeWizard);
 
+// ─── Admin routes ───────────────────────────────────────────
 router.get('/managers', checkPermissions(PERMISSIONS.MANAGE_USERS), getManagerUsers);
-router.put('/complete-wizard', completeWelcomeWizard);
-router.route('/profile/skills').post(addSkillToProfile);
+router.get('/export', checkPermissions(PERMISSIONS.MANAGE_USERS), exportUsers);
 
-// 2. Routes with ONE parameter that is NOT an ID at the end
-router.route('/profile/skills/:skillId').delete(removeSkillFromProfile);
+router.post('/', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_USERS), createUser);
+router.get('/', checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getAllUsers);
 
-// 3. Routes with MULTIPLE parameters
-router.route('/:userId/skills/:skillId/endorse').post(endorseSkill);
+// ─── Multi-param routes ─────────────────────────────────────
+router.post('/:userId/skills/:skillId/endorse', writeLimiter, endorseSkill);
+router.get('/:id/checklist-instances', checkPermissions(PERMISSIONS.VIEW_USER_CHECKLISTS), getUserChecklistInstances);
+router.put('/:id/reactivate', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_USERS), reactivateUser);
 
-// 4. Routes with an ID parameter followed by more text
-router.route('/:id/checklist-instances').get(checkPermissions(PERMISSIONS.VIEW_USER_CHECKLISTS), getUserChecklistInstances);
-
-
-// 5. THE MOST GENERIC ROUTES (Admin User Management) LAST
-// Because `/:id` can match almost anything, it must come after all other specific routes.
-router.route('/')
-    .get(checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getAllUsers)
-    .post(checkPermissions(PERMISSIONS.MANAGE_USERS), createUser);
-
-router.route('/:id')
-    .get(checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getUserById)
-    .put(checkPermissions(PERMISSIONS.MANAGE_USERS), updateUserById)     
-    .delete(checkPermissions(PERMISSIONS.MANAGE_USERS), deactivateUser); 
-
-// =======================================================================
+// ─── /:id routes (must be last) ─────────────────────────────
+router.get('/:id', checkPermissions(PERMISSIONS.VIEW_ALL_USERS), getUserById);
+router.put('/:id', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_USERS), updateUserById);
+router.delete('/:id', writeLimiter, checkPermissions(PERMISSIONS.MANAGE_USERS), deactivateUser);
 
 module.exports = router;

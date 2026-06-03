@@ -1,104 +1,114 @@
-const { notificationService } = require('../services');
+const reviewService = require('../services/reviewService');
+const { createAuditLog } = require('../services/auditLogService');
+const { createNotification } = require('../services/notificationService');
 const asyncHandler = require('../utils/asyncHandler');
-const User = require('../model/user');
-const {
-    initiateReviewCycle,
-    getMyReviews,
-    getTeamReviews,
-    submitSelfAssessment,
-    submitManagerReview,
-} = require('../services/reviewService');
 
-exports.initiateReviewCycle = asyncHandler(async (req, res, next) => {
-    try {
-        const { cycleName, employeeIds } = req.body;
+exports.initiateReviewCycle = asyncHandler(async (req, res) => {
+    const { cycleName, employeeIds, templateId } = req.body;
+    const result = await reviewService.initiateReviewCycle(cycleName, employeeIds, templateId, req.user.id, req.ip);
 
-        const reviewsToCreate = await initiateReviewCycle(cycleName, employeeIds);
-
-        for (const review of reviewsToCreate) {
-            await notificationService.createNotification({
-                recipient: review.employee,
-                message: `Your performance review cycle '${cycleName}' has begun. Please complete your self-assessment.`,
-                link: '/performance/my-reviews',
-                type: 'General'
-            }, req);
-            const employee = await User.findById(review.employee).select('name');
-            await notificationService.createNotification({
-                recipient: review.manager,
-                message: `The performance review cycle for ${employee.name} has begun.`,
-                link: '/performance/team-reviews',
-                type: 'General'
-            }, req);
-        }
-
-        res.status(201).json({ success: true, message: `${reviewsToCreate.length} reviews created successfully.` });
-    } catch (error) {
-        next(error);
+    for (const review of result.reviews) {
+        await createNotification({
+            recipient: review.employee._id, sender: req.user.id,
+            message: `Your performance review cycle '${cycleName}' has begun. Please complete your self-assessment.`,
+            link: '/performance/my-reviews', type: 'General',
+        }, req);
+        await createNotification({
+            recipient: review.manager._id, sender: req.user.id,
+            message: `The performance review cycle for ${review.employee.name} has begun.`,
+            link: '/performance/team-reviews', type: 'General',
+        }, req);
     }
+
+    res.status(201).json({
+        success: true, message: `${result.reviews.length} reviews created.`,
+        skipped: result.skipped,
+    });
 });
 
-exports.getMyReviews = asyncHandler(async (req, res, next) => {
-    try {
-        const { page, limit } = req.query;
-        const result = await getMyReviews(req.user.id, { page, limit });
-        res.status(200).json({ success: true, ...result });
-    } catch (error) { next(error); }
+exports.getReviewById = asyncHandler(async (req, res) => {
+    const review = await reviewService.getReviewById(req.params.id);
+    if (!review) return res.status(404).json({ success: false, message: 'Review not found.' });
+    res.status(200).json({ success: true, data: review });
 });
 
-exports.getTeamReviews = asyncHandler(async (req, res, next) => {
-    try {
-        const { page, limit } = req.query;
-        const result = await getTeamReviews(req.user.id, { page, limit });
-        res.status(200).json({ success: true, ...result });
-    } catch (error) { next(error); }
+exports.getMyReviews = asyncHandler(async (req, res) => {
+    const result = await reviewService.getMyReviews(req.user.id, req.query);
+    res.status(200).json({ success: true, ...result });
 });
 
-exports.submitSelfAssessment = asyncHandler(async (req, res, next) => {
-    try {
-        const result = await submitSelfAssessment(req.params.id, req.user.id, req.body.selfAssessment);
-        if (result.error === 'not_found') {
-            return res.status(404).json({ success: false, message: 'Review not found.' });
-        }
-        if (result.error === 'unauthorized') {
-            return res.status(403).json({ success: false, message: 'Not authorized.' });
-        }
-        if (result.error === 'invalid_status') {
-            return res.status(400).json({ success: false, message: 'Self-assessment already submitted.' });
-        }
-
-        await notificationService.createNotification({
-            recipient: result.review.manager,
-            sender: req.user.id,
-            message: `${req.user.name} has submitted their self-assessment.`,
-            link: `/performance/team-reviews/${result.review._id}`,
-            type: 'General'
-        }, req);
-
-        res.status(200).json({ success: true, data: result.review });
-    } catch (error) { next(error); }
+exports.getTeamReviews = asyncHandler(async (req, res) => {
+    const result = await reviewService.getTeamReviews(req.user.id, req.query);
+    res.status(200).json({ success: true, ...result });
 });
 
-exports.submitManagerReview = asyncHandler(async (req, res, next) => {
-    try {
-        const result = await submitManagerReview(req.params.id, req.user.id, req.body.managerReview);
-        if (result.error === 'not_found') {
-            return res.status(404).json({ success: false, message: 'Review not found.' });
-        }
-        if (result.error === 'unauthorized') {
-            return res.status(403).json({ success: false, message: 'Not authorized.' });
-        }
-        if (result.error === 'invalid_status') {
-            return res.status(400).json({ success: false, message: 'Cannot submit this review.' });
-        }
+exports.submitSelfAssessment = asyncHandler(async (req, res) => {
+    const review = await reviewService.submitSelfAssessment(req.params.id, req.user.id, req.body.selfAssessment);
 
-        await notificationService.createNotification({
-            recipient: result.review.employee,
-            sender: req.user.id,
-            message: `Your manager has completed your performance review for '${result.review.cycleName}'.`,
-            link: `/performance/my-reviews/${result.review._id}`,
-            type: 'General'
-        }, req);
+    await createAuditLog({
+        actor: req.user.id, action: 'REVIEW_SELF_ASSESSMENT_SUBMITTED',
+        target: { id: review._id, type: 'Review' },
+        details: { cycleName: review.cycleName },
+        ipAddress: req.ip,
+    });
+    await createNotification({
+        recipient: review.manager, sender: req.user.id,
+        message: `${req.user.name} has submitted their self-assessment.`,
+        link: `/performance/team-reviews/${review._id}`, type: 'General',
+    }, req);
 
-        res.status(200).json({ success: true, data: result.review });
-    } catch (error) { next(error); }
+    res.status(200).json({ success: true, data: review });
+});
+
+exports.submitManagerReview = asyncHandler(async (req, res) => {
+    const review = await reviewService.submitManagerReview(req.params.id, req.user.id, req.body.managerReview);
+
+    await createAuditLog({
+        actor: req.user.id, action: 'REVIEW_MANAGER_SUBMITTED',
+        target: { id: review._id, type: 'Review' },
+        details: { cycleName: review.cycleName, rating: review.rating },
+        ipAddress: req.ip,
+    });
+    await createNotification({
+        recipient: review.employee, sender: req.user.id,
+        message: `Your manager has completed your performance review for '${review.cycleName}'.`,
+        link: `/performance/my-reviews/${review._id}`, type: 'General',
+    }, req);
+
+    res.status(200).json({ success: true, data: review });
+});
+
+exports.approveReview = asyncHandler(async (req, res) => {
+    const review = await reviewService.approveReview(req.params.id, req.user.id, req.ip);
+    res.status(200).json({ success: true, message: 'Review approved.', data: review });
+});
+
+exports.archiveReview = asyncHandler(async (req, res) => {
+    const review = await reviewService.archiveReview(req.params.id, req.user.id, req.ip);
+    res.status(200).json({ success: true, message: 'Review archived.', data: review });
+});
+
+exports.addGoal = asyncHandler(async (req, res) => {
+    const goals = await reviewService.addGoal(req.params.id, req.user.id, req.body);
+    res.status(201).json({ success: true, data: goals });
+});
+
+exports.updateGoal = asyncHandler(async (req, res) => {
+    const goals = await reviewService.updateGoal(req.params.id, req.params.goalId, req.body);
+    res.json({ success: true, data: goals });
+});
+
+exports.getReviewHistory = asyncHandler(async (req, res) => {
+    const result = await reviewService.getReviewHistory(req.params.employeeId);
+    res.json({ success: true, ...result });
+});
+
+exports.exportReviews = asyncHandler(async (req, res) => {
+    const filter = {};
+    if (req.query.status) filter.status = req.query.status;
+    if (req.query.cycleName) filter.cycleName = req.query.cycleName;
+    const csv = await reviewService.exportReviewsCSV(filter);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="reviews-export.csv"');
+    res.send(csv);
 });

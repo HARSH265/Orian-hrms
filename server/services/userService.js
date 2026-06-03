@@ -1,32 +1,19 @@
 const User = require('../model/user');
+const Settings = require('../model/Settings');
 const ChecklistInstance = require('../model/checklistInstance.model');
+const { checklistService, auditLogService } = require('./index');
 const { createAuditLog } = require('./auditLogService');
 const logger = require('../utils/logger');
 
-/**
- * Create a new user (admin only)
- */
 const createUser = async (payload, actorId, ip) => {
     const { name, email, password, systemRole, jobTitle, department, manager, roles, employmentInfo, personalInfo } = payload;
     const existing = await User.findOne({ email });
-    if (existing) {
-        throw new Error('User already exists');
-    }
+    if (existing) throw new Error('User already exists');
     const user = await User.create({
-        name,
-        email,
-        password,
-        systemRole,
-        roles,
-        jobTitle,
-        department,
-        manager,
-        employmentInfo,
-        personalInfo,
+        name, email, password, systemRole, roles, jobTitle, department, manager, employmentInfo, personalInfo,
     });
     await createAuditLog({
-        actor: actorId,
-        action: 'USER_CREATED',
+        actor: actorId, action: 'USER_CREATED',
         target: { id: user._id, type: 'User' },
         details: { name: user.name, email: user.email, systemRole: user.systemRole },
         ipAddress: ip,
@@ -34,37 +21,21 @@ const createUser = async (payload, actorId, ip) => {
     return user;
 };
 
-/**
- * Get a user by ID (admin or self)
- */
 const getUserById = async (userId) => {
     return User.findById(userId)
         .populate('department', 'name')
         .populate('manager', 'name')
-        .populate({
-            path: 'employmentHistory',
-            populate: [
-                { path: 'department', select: 'name' },
-                { path: 'manager', select: 'name' },
-            ],
-        })
-        .populate({
-            path: 'skills.skill',
-            model: 'Skill',
-            select: 'name',
-        })
+        .populate({ path: 'employmentHistory', populate: [{ path: 'department', select: 'name' }, { path: 'manager', select: 'name' }] })
+        .populate({ path: 'skills.skill', model: 'Skill', select: 'name' })
         .lean();
 };
 
-/**
- * Get all users with optional filters & pagination (admin)
- */
-const getAllUsers = async (filter = {}, options = {}) => {
-    const { role, status, search, sortBy = 'name', order = 'asc', page = 1, limit: rawLimit = 10 } = filter;
+const getAllUsers = async (filter = {}) => {
+    const { systemRole, status, search, sortBy = 'name', order = 'asc', page = 1, limit: rawLimit = 10 } = filter;
     const limit = Math.min(Math.max(parseInt(rawLimit) || 10, 1), 100);
     const query = {};
-    if (role) query.role = role;
-    if (status) query.isActive = status === 'active';
+    if (systemRole) query.systemRole = systemRole;
+    if (status !== undefined) query.isActive = status === 'active';
     if (search) {
         const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         query.$or = [{ name: { $regex: escapedSearch, $options: 'i' } }, { email: { $regex: escapedSearch, $options: 'i' } }];
@@ -84,37 +55,28 @@ const getAllUsers = async (filter = {}, options = {}) => {
     return { users, total, page, limit };
 };
 
-/**
- * Update a user (admin)
- */
 const updateUser = async (userId, updates, actorId, ip) => {
     const userBefore = await User.findById(userId).lean();
     if (!userBefore) throw new Error('User not found');
-    // Whitelist allowed fields to prevent privilege escalation
     const allowedFields = [
         'name', 'jobTitle', 'department', 'manager', 'phone', 'address',
-        'employmentInfo', 'personalInfo', 'emergencyContact', 'roles', 'systemRole'
+        'employmentInfo', 'personalInfo', 'emergencyContact', 'roles', 'systemRole',
     ];
     const filteredUpdates = {};
     allowedFields.forEach(field => {
-        if (updates[field] !== undefined) {
-            filteredUpdates[field] = updates[field];
-        }
+        if (updates[field] !== undefined) filteredUpdates[field] = updates[field];
     });
-    // Prevent sensitive field overrides
     delete filteredUpdates.password;
     delete filteredUpdates.twoFactorAuth;
     delete filteredUpdates.isActive;
     delete filteredUpdates.failedLoginAttempts;
     delete filteredUpdates.lockUntil;
-    // Prevent circular manager relationships
+
     if (filteredUpdates.manager) {
         let currentManagerId = filteredUpdates.manager.toString();
         const visited = new Set([userId.toString()]);
         while (currentManagerId) {
-            if (visited.has(currentManagerId)) {
-                throw new Error('Circular manager relationship detected');
-            }
+            if (visited.has(currentManagerId)) throw new Error('Circular manager relationship detected');
             visited.add(currentManagerId);
             const managerUser = await User.findById(currentManagerId).select('manager').lean();
             currentManagerId = managerUser?.manager?.toString();
@@ -122,8 +84,7 @@ const updateUser = async (userId, updates, actorId, ip) => {
     }
     const updated = await User.findByIdAndUpdate(userId, filteredUpdates, { new: true, runValidators: true });
     await createAuditLog({
-        actor: actorId,
-        action: 'USER_UPDATED',
+        actor: actorId, action: 'USER_UPDATED',
         target: { id: userId, type: 'User' },
         details: { before: userBefore, after: updates },
         ipAddress: ip,
@@ -131,41 +92,50 @@ const updateUser = async (userId, updates, actorId, ip) => {
     return updated;
 };
 
-/**
- * Deactivate (soft‑delete) a user and optionally run off‑boarding checklist.
- */
-const deactivateUser = async (userId, actorId, ip) => {
+const deactivateUser = async (userId, actor, ip) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
-    // Off‑boarding logic can be added here (omitted for brevity).
+
+    const settings = await Settings.findOne({ singleton: 'main_settings' });
+    if (settings?.offboardingTemplateId) {
+        await checklistService.applyChecklist({
+            templateId: settings.offboardingTemplateId,
+            targetUserId: userId,
+            creator: actor,
+            startDate: new Date(),
+        });
+        await createAuditLog({
+            actor: actor._id, action: 'OFFBOARDING_INITIATED',
+            target: { id: userId, type: 'User' },
+            details: { templateId: settings.offboardingTemplateId },
+        });
+    }
+
     user.isActive = false;
     await user.save();
-    await createAuditLog({
-        actor: actorId,
-        action: 'USER_DEACTIVATED',
-        target: { id: userId, type: 'User' },
-        ipAddress: ip,
-    });
+    await createAuditLog({ actor: actor._id, action: 'USER_DEACTIVATED', target: { id: userId, type: 'User' }, ipAddress: ip });
+    return { message: 'User deactivated successfully. Offboarding process initiated.', data: { deactivatedUserId: userId } };
+};
+
+const reactivateUser = async (userId, actorId, ip) => {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+    if (user.isActive) throw new Error('User is already active');
+    user.isActive = true;
+    await user.save();
+    await createAuditLog({ actor: actorId, action: 'USER_REACTIVATED', target: { id: userId, type: 'User' }, ipAddress: ip });
     return user;
 };
 
-/**
- * Add a skill to a user's profile.
- */
 const addSkill = async (userId, skillId, proficiency) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
-    if (user.skills.some(s => s.skill.toString() === skillId)) {
-        throw new Error('Skill already added');
-    }
+    if (user.skills.some(s => s.skill.toString() === skillId)) throw new Error('Skill already added');
     user.skills.push({ skill: skillId, proficiency });
     await user.save();
     return user.skills;
 };
 
-/**
- * Remove a skill from a user's profile.
- */
 const removeSkill = async (userId, skillId) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
@@ -174,152 +144,95 @@ const removeSkill = async (userId, skillId) => {
     return user.skills;
 };
 
-module.exports = {
-    createUser,
-    getUserById,
-    getAllUsers,
-    updateUser,
-    deactivateUser,
-    addSkill,
-    removeSkill,
-    // New service methods added for remaining controller actions
-    updateProfile: async (req) => {
-        const userId = req.user.id;
-        const updateData = req.body;
-        const user = await User.findById(userId);
-        if (!user) {
-            const err = new Error('User not found');
-            err.status = 404;
-            throw err;
-        }
-        // Allowed top‑level fields
-        const allowedTopLevelFields = ['name', 'phone', 'address', 'profilePictureUrl'];
-        allowedTopLevelFields.forEach(field => {
-            if (updateData[field] !== undefined) {
-                user[field] = updateData[field];
-            }
+const updateProfile = async (userId, updateData) => {
+    const user = await User.findById(userId);
+    if (!user) { const err = new Error('User not found'); err.status = 404; throw err; }
+    const allowedTopLevelFields = ['name', 'phone', 'address', 'profilePictureUrl'];
+    allowedTopLevelFields.forEach(field => {
+        if (updateData[field] !== undefined) user[field] = updateData[field];
+    });
+    if (updateData.personalInfo) {
+        const allowedPersonalInfoFields = ['dateOfBirth', 'gender', 'nationality', 'maritalStatus'];
+        if (!user.personalInfo) user.personalInfo = {};
+        allowedPersonalInfoFields.forEach(field => {
+            if (updateData.personalInfo[field] !== undefined) user.personalInfo[field] = updateData.personalInfo[field];
         });
-        // PersonalInfo
-        if (updateData.personalInfo) {
-            const allowedPersonalInfoFields = ['dateOfBirth', 'gender', 'nationality', 'maritalStatus'];
-            if (!user.personalInfo) user.personalInfo = {};
-            allowedPersonalInfoFields.forEach(field => {
-                if (updateData.personalInfo[field] !== undefined) {
-                    user.personalInfo[field] = updateData.personalInfo[field];
-                }
-            });
-        }
-        // EmergencyContact
-        if (updateData.emergencyContact) {
-            const allowedEmergencyFields = ['name', 'phone', 'relation'];
-            if (!user.emergencyContact) user.emergencyContact = {};
-            allowedEmergencyFields.forEach(field => {
-                if (updateData.emergencyContact[field] !== undefined) {
-                    user.emergencyContact[field] = updateData.emergencyContact[field];
-                }
-            });
-        }
-        const updatedUser = await user.save();
-        // Re‑populate for response
-        return await User.findById(updatedUser._id)
-            .populate('department', 'name')
-            .populate('manager', 'name')
-            .populate({
-                path: 'employmentHistory',
-                populate: [
-                    { path: 'department', select: 'name' },
-                    { path: 'manager', select: 'name' }
-                ]
-            })
-            .populate({
-                path: 'skills.skill',
-                model: 'Skill',
-                select: 'name'
-            });
-    },
-    getProfile: async (req) => {
-        const user = await User.findById(req.user.id)
-            .populate('department', 'name')
-            .populate('manager', 'name')
-            .populate({
-                path: 'employmentHistory',
-                populate: [
-                    { path: 'department', select: 'name' },
-                    { path: 'manager', select: 'name' }
-                ]
-            })
-            .populate({
-                path: 'skills.skill',
-                model: 'Skill',
-                select: 'name'
-            })
-            .lean();
-        return user;
-    },
-    getManagerUsers: async () => {
-        return await User.find({ role: { $in: ['manager', 'hr', 'super-admin'] } }).select('name');
-    },
-    completeWelcomeWizard: async (req) => {
-        await User.findByIdAndUpdate(req.user.id, { needsWelcomeWizard: false });
-        return { message: 'Welcome wizard completed.' };
-    },
-    endorseSkill: async (req) => {
-        const endorserId = req.user.id;
-        const { userId, skillId } = req.params;
-        const userToEndorse = await User.findById(userId);
-        if (!userToEndorse) {
-            const err = new Error('User not found');
-            err.status = 404;
-            throw err;
-        }
-        const skillToEndorse = userToEndorse.skills.find(s => s.skill.toString() === skillId);
-        if (!skillToEndorse) {
-            const err = new Error('User does not have this skill.');
-            err.status = 404;
-            throw err;
-        }
-        if (skillToEndorse.endorsements.some(e => e.toString() === endorserId) || userId.toString() === endorserId) {
-            const err = new Error('Cannot endorse this skill.');
-            err.status = 400;
-            throw err;
-        }
-        await User.findByIdAndUpdate(
-            userId,
-            { $addToSet: { 'skills.$[elem].endorsements': endorserId } },
-            { arrayFilters: [{ 'elem.skill': skillId }] }
-        );
-        const updatedUser = await User.findById(userId).populate({
-            path: 'skills.skill skills.endorsements',
-            select: 'name category profilePictureUrl'
-        });
-        return updatedUser.skills;
-    },
-    getUserChecklistInstances: async (req) => {
-        const targetUserId = req.params.id;
-        const targetUser = await User.findById(targetUserId);
-        if (!targetUser) {
-            const err = new Error('Target user not found.');
-            err.status = 404;
-            throw err;
-        }
-        const isManager = targetUser.manager?.toString() === req.user.id.toString();
-        const isAdminOrHr = ['super-admin', 'hr'].includes(req.user.role);
-        if (!isManager && !isAdminOrHr) {
-            const err = new Error('You are not authorized to view these checklists.');
-            err.status = 403;
-            throw err;
-        }
-        const instances = await ChecklistInstance.find({ targetUser: targetUserId })
-            .populate('template', 'name')
-            .populate({
-                path: 'generatedTasks',
-                select: 'title status assignees',
-                populate: {
-                    path: 'assignees',
-                    select: 'name profilePictureUrl'
-                }
-            })
-            .sort({ createdAt: -1 });
-        return instances;
     }
+    if (updateData.emergencyContact) {
+        const allowedEmergencyFields = ['name', 'phone', 'relation'];
+        if (!user.emergencyContact) user.emergencyContact = {};
+        allowedEmergencyFields.forEach(field => {
+            if (updateData.emergencyContact[field] !== undefined) user.emergencyContact[field] = updateData.emergencyContact[field];
+        });
+    }
+    const updatedUser = await user.save();
+    return await User.findById(updatedUser._id)
+        .populate('department', 'name')
+        .populate('manager', 'name')
+        .populate({ path: 'employmentHistory', populate: [{ path: 'department', select: 'name' }, { path: 'manager', select: 'name' }] })
+        .populate({ path: 'skills.skill', model: 'Skill', select: 'name' });
+};
+
+const getProfile = async (userId) => {
+    return User.findById(userId)
+        .populate('department', 'name')
+        .populate('manager', 'name')
+        .populate({ path: 'employmentHistory', populate: [{ path: 'department', select: 'name' }, { path: 'manager', select: 'name' }] })
+        .populate({ path: 'skills.skill', model: 'Skill', select: 'name' })
+        .lean();
+};
+
+const getManagerUsers = async () => {
+    return User.find({ systemRole: { $in: ['manager', 'hr', 'super-admin'] } }).select('name');
+};
+
+const completeWelcomeWizard = async (userId) => {
+    await User.findByIdAndUpdate(userId, { needsWelcomeWizard: false });
+    return { message: 'Welcome wizard completed.' };
+};
+
+const endorseSkill = async (userId, skillId, endorserId) => {
+    const userToEndorse = await User.findById(userId);
+    if (!userToEndorse) { const err = new Error('User not found'); err.status = 404; throw err; }
+    const skillToEndorse = userToEndorse.skills.find(s => s.skill.toString() === skillId);
+    if (!skillToEndorse) { const err = new Error('User does not have this skill.'); err.status = 404; throw err; }
+    if (skillToEndorse.endorsements.some(e => e.toString() === endorserId) || userId.toString() === endorserId) {
+        const err = new Error('Cannot endorse this skill.'); err.status = 400; throw err;
+    }
+    await User.findByIdAndUpdate(userId, { $addToSet: { 'skills.$[elem].endorsements': endorserId } }, { arrayFilters: [{ 'elem.skill': skillId }] });
+    const updatedUser = await User.findById(userId).populate({ path: 'skills.skill skills.endorsements', select: 'name category profilePictureUrl' });
+    return updatedUser.skills;
+};
+
+const getUserChecklistInstances = async (targetUserId, loggedInUserId, loggedInUserRole) => {
+    const targetUser = await User.findById(targetUserId);
+    if (!targetUser) { const err = new Error('Target user not found.'); err.status = 404; throw err; }
+    const isManager = targetUser.manager?.toString() === loggedInUserId;
+    const isAdminOrHr = ['super-admin', 'hr'].includes(loggedInUserRole);
+    if (!isManager && !isAdminOrHr) { const err = new Error('You are not authorized to view these checklists.'); err.status = 403; throw err; }
+    const instances = await ChecklistInstance.find({ targetUser: targetUserId })
+        .populate('template', 'name')
+        .populate({ path: 'generatedTasks', select: 'title status assignees', populate: { path: 'assignees', select: 'name profilePictureUrl' } })
+        .sort({ createdAt: -1 });
+    return instances;
+};
+
+const exportUsersCSV = async (filter = {}) => {
+    const users = await User.find(filter)
+        .populate('department', 'name')
+        .populate('manager', 'name')
+        .sort({ name: 1 })
+        .lean();
+
+    const header = 'Name,Email,Role,Job Title,Department,Manager,Status,Hire Date,Created At\n';
+    const rows = users.map(u =>
+        `"${u.name || ''}","${u.email || ''}",${u.systemRole || ''},"${u.jobTitle || ''}","${u.department?.name || ''}","${u.manager?.name || ''}",${u.isActive ? 'Active' : 'Inactive'},${u.employmentInfo?.hireDate ? new Date(u.employmentInfo.hireDate).toISOString().split('T')[0] : ''},${new Date(u.createdAt).toISOString().split('T')[0]}`
+    ).join('\n');
+    return header + rows;
+};
+
+module.exports = {
+    createUser, getUserById, getAllUsers, updateUser, deactivateUser, reactivateUser,
+    addSkill, removeSkill, updateProfile, getProfile, getManagerUsers,
+    completeWelcomeWizard, endorseSkill, getUserChecklistInstances, exportUsersCSV,
 };

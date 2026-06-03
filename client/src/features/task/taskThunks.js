@@ -57,7 +57,7 @@ export const updateTaskStatus = createAsyncThunk('task/updateStatus', async ({ t
     const { data } = await api.put(`/tasks/${taskId}/status`, { status });
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+    return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -130,7 +130,7 @@ export const updateTask = createAsyncThunk('task/update', async ({ taskId, taskD
     const { data } = await api.put(`/tasks/${taskId}`, taskData);
     return data.data;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+    return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -139,7 +139,7 @@ export const deleteTask = createAsyncThunk('task/delete', async (taskId, { rejec
     await api.delete(`/tasks/${taskId}`);
     return taskId;
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message);
+    return rejectWithValue(extractErrorMessage(error));
   }
 });
 
@@ -147,14 +147,14 @@ export const addCommentToTask = createAsyncThunk('task/addComment', async ({ tas
   try {
     const { data } = await api.post(`/tasks/${taskId}/comments`, { text });
     return { taskId, comments: data.data };
-  } catch (error) { return rejectWithValue(error.response?.data?.message); }
+  } catch (error) { return rejectWithValue(extractErrorMessage(error)); }
 });
 
 export const addAttachmentToTask = createAsyncThunk('task/addAttachment', async ({ taskId, url, originalName }, { rejectWithValue }) => {
   try {
     const { data } = await api.post(`/tasks/${taskId}/attachments`, { url, originalName });
     return { taskId, attachments: data.data };
-  } catch (error) { return rejectWithValue(error.response?.data?.message); }
+  } catch (error) { return rejectWithValue(extractErrorMessage(error)); }
 });
 
 // Thunk for an assignee to request a re-open
